@@ -1,0 +1,10 @@
+{
+  "ext": "js,mjs,json,yml",
+  "ignore": [
+    "app/assets/js/prose-editor.js",
+    "dist"
+  ],
+  "env": {
+    "WAVEORB_PORT": 7100
+  }
+}
