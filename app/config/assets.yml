@@ -4,5 +4,5 @@ bundle:
     - /js/app.js
   css:
     - /css/vcss-min.css
-    - /css/app.css
     - /css/prosemirror.css
+    - /css/app.css

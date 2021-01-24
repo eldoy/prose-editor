@@ -17,7 +17,7 @@ module.exports = async function($) {
         ${process.env.NODE_ENV === 'development' ? '<script src="/js/dev.js"></script>' : ''}
       </head>
       <body>
-        <div class="main">${ $.page.content }</div>
+        <main>${$.page.content}</main>
         <script src="/js/app.js"></script>
       </body>
     </html>
