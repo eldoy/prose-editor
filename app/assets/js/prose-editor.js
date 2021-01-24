@@ -4317,6 +4317,27 @@
     return false
   }
 
+  function canCut(node, start, end) {
+    return (start == 0 || node.canReplace(start, node.childCount)) &&
+      (end == node.childCount || node.canReplace(0, end))
+  }
+
+  // :: (NodeRange) → ?number
+  // Try to find a target depth to which the content in the given range
+  // can be lifted. Will not go across
+  // [isolating](#model.NodeSpec.isolating) parent nodes.
+  function liftTarget(range) {
+    var parent = range.parent;
+    var content = parent.content.cutByIndex(range.startIndex, range.endIndex);
+    for (var depth = range.depth;; --depth) {
+      var node = range.$from.node(depth);
+      var index = range.$from.index(depth), endIndex = range.$to.indexAfter(depth);
+      if (depth < range.depth && node.canReplace(index, endIndex, content))
+        { return depth }
+      if (depth == 0 || node.type.spec.isolating || !canCut(node, index, endIndex)) { break }
+    }
+  }
+
   // :: (NodeRange, number) → this
   // Split the content in the given range off from its parent, if there
   // is sibling content before or after it, and move it up the tree to
@@ -4414,6 +4435,31 @@
                                            new Slice(Fragment.from(newNode), 0, 0), 1, true))
   };
 
+  // :: (Node, number, number, ?[?{type: NodeType, attrs: ?Object}]) → bool
+  // Check whether splitting at the given position is allowed.
+  function canSplit(doc, pos, depth, typesAfter) {
+    if ( depth === void 0 ) depth = 1;
+
+    var $pos = doc.resolve(pos), base = $pos.depth - depth;
+    var innerType = (typesAfter && typesAfter[typesAfter.length - 1]) || $pos.parent;
+    if (base < 0 || $pos.parent.type.spec.isolating ||
+        !$pos.parent.canReplace($pos.index(), $pos.parent.childCount) ||
+        !innerType.type.validContent($pos.parent.content.cutByIndex($pos.index(), $pos.parent.childCount)))
+      { return false }
+    for (var d = $pos.depth - 1, i = depth - 2; d > base; d--, i--) {
+      var node = $pos.node(d), index$1 = $pos.index(d);
+      if (node.type.spec.isolating) { return false }
+      var rest = node.content.cutByIndex(index$1, node.childCount);
+      var after = (typesAfter && typesAfter[i]) || node;
+      if (after != node) { rest = rest.replaceChild(0, after.type.create(after.attrs)); }
+      if (!node.canReplace(index$1 + 1, node.childCount) || !after.type.validContent(rest))
+        { return false }
+    }
+    var index = $pos.indexAfter(base);
+    var baseType = typesAfter && typesAfter[0];
+    return $pos.node(base).canReplaceWith(index, index, baseType ? baseType.type : $pos.node(base + 1).type)
+  }
+
   // :: (number, ?number, ?[?{type: NodeType, attrs: ?Object}]) → this
   // Split the node at the given position, and optionally, if `depth` is
   // greater than one, any number of nodes above that. By default, the
@@ -4431,6 +4477,19 @@
     }
     return this.step(new ReplaceStep(pos, pos, new Slice(before.append(after), depth, depth), true))
   };
+
+  // :: (Node, number) → bool
+  // Test whether the blocks before and after a given position can be
+  // joined.
+  function canJoin(doc, pos) {
+    var $pos = doc.resolve(pos), index = $pos.index();
+    return joinable$1($pos.nodeBefore, $pos.nodeAfter) &&
+      $pos.parent.canReplace(index, index + 1)
+  }
+
+  function joinable$1(a, b) {
+    return a && b && !a.isLeaf && a.canAppend(b)
+  }
 
   // :: (number, ?number) → this
   // Join the blocks around the given position. If depth is 2, their
@@ -6236,6 +6295,135 @@
   Object.defineProperties( EditorState.prototype, prototypeAccessors$1$5 );
 
   var applyListeners = [];
+
+  // PluginSpec:: interface
+  //
+  // This is the type passed to the [`Plugin`](#state.Plugin)
+  // constructor. It provides a definition for a plugin.
+  //
+  //   props:: ?EditorProps
+  //   The [view props](#view.EditorProps) added by this plugin. Props
+  //   that are functions will be bound to have the plugin instance as
+  //   their `this` binding.
+  //
+  //   state:: ?StateField<any>
+  //   Allows a plugin to define a [state field](#state.StateField), an
+  //   extra slot in the state object in which it can keep its own data.
+  //
+  //   key:: ?PluginKey
+  //   Can be used to make this a keyed plugin. You can have only one
+  //   plugin with a given key in a given state, but it is possible to
+  //   access the plugin's configuration and state through the key,
+  //   without having access to the plugin instance object.
+  //
+  //   view:: ?(EditorView) → Object
+  //   When the plugin needs to interact with the editor view, or
+  //   set something up in the DOM, use this field. The function
+  //   will be called when the plugin's state is associated with an
+  //   editor view.
+  //
+  //     return::-
+  //     Should return an object with the following optional
+  //     properties:
+  //
+  //       update:: ?(view: EditorView, prevState: EditorState)
+  //       Called whenever the view's state is updated.
+  //
+  //       destroy:: ?()
+  //       Called when the view is destroyed or receives a state
+  //       with different plugins.
+  //
+  //   filterTransaction:: ?(Transaction, EditorState) → bool
+  //   When present, this will be called before a transaction is
+  //   applied by the state, allowing the plugin to cancel it (by
+  //   returning false).
+  //
+  //   appendTransaction:: ?(transactions: [Transaction], oldState: EditorState, newState: EditorState) → ?Transaction
+  //   Allows the plugin to append another transaction to be applied
+  //   after the given array of transactions. When another plugin
+  //   appends a transaction after this was called, it is called again
+  //   with the new state and new transactions—but only the new
+  //   transactions, i.e. it won't be passed transactions that it
+  //   already saw.
+
+  function bindProps(obj, self, target) {
+    for (var prop in obj) {
+      var val = obj[prop];
+      if (val instanceof Function) { val = val.bind(self); }
+      else if (prop == "handleDOMEvents") { val = bindProps(val, self, {}); }
+      target[prop] = val;
+    }
+    return target
+  }
+
+  // ::- Plugins bundle functionality that can be added to an editor.
+  // They are part of the [editor state](#state.EditorState) and
+  // may influence that state and the view that contains it.
+  var Plugin = function Plugin(spec) {
+    // :: EditorProps
+    // The [props](#view.EditorProps) exported by this plugin.
+    this.props = {};
+    if (spec.props) { bindProps(spec.props, this, this.props); }
+    // :: Object
+    // The plugin's [spec object](#state.PluginSpec).
+    this.spec = spec;
+    this.key = spec.key ? spec.key.key : createKey("plugin");
+  };
+
+  // :: (EditorState) → any
+  // Extract the plugin's state field from an editor state.
+  Plugin.prototype.getState = function getState (state) { return state[this.key] };
+
+  // StateField:: interface<T>
+  // A plugin spec may provide a state field (under its
+  // [`state`](#state.PluginSpec.state) property) of this type, which
+  // describes the state it wants to keep. Functions provided here are
+  // always called with the plugin instance as their `this` binding.
+  //
+  //   init:: (config: Object, instance: EditorState) → T
+  //   Initialize the value of the field. `config` will be the object
+  //   passed to [`EditorState.create`](#state.EditorState^create). Note
+  //   that `instance` is a half-initialized state instance, and will
+  //   not have values for plugin fields initialized after this one.
+  //
+  //   apply:: (tr: Transaction, value: T, oldState: EditorState, newState: EditorState) → T
+  //   Apply the given transaction to this state field, producing a new
+  //   field value. Note that the `newState` argument is again a partially
+  //   constructed state does not yet contain the state from plugins
+  //   coming after this one.
+  //
+  //   toJSON:: ?(value: T) → *
+  //   Convert this field to JSON. Optional, can be left off to disable
+  //   JSON serialization for the field.
+  //
+  //   fromJSON:: ?(config: Object, value: *, state: EditorState) → T
+  //   Deserialize the JSON representation of this field. Note that the
+  //   `state` argument is again a half-initialized state.
+
+  var keys = Object.create(null);
+
+  function createKey(name) {
+    if (name in keys) { return name + "$" + ++keys[name] }
+    keys[name] = 0;
+    return name + "$"
+  }
+
+  // ::- A key is used to [tag](#state.PluginSpec.key)
+  // plugins in a way that makes it possible to find them, given an
+  // editor state. Assigning a key does mean only one plugin of that
+  // type can be active in a state.
+  var PluginKey = function PluginKey(name) {
+  if ( name === void 0 ) name = "key";
+   this.key = createKey(name); };
+
+  // :: (EditorState) → ?Plugin
+  // Get the active plugin with this key, if any, from an editor
+  // state.
+  PluginKey.prototype.get = function get (state) { return state.config.pluginsByKey[this.key] };
+
+  // :: (EditorState) → ?any
+  // Get the plugin's state from an editor state.
+  PluginKey.prototype.getState = function getState (state) { return state[this.key] };
 
   var result = {};
 
@@ -11258,7 +11446,1317 @@
     return nA != nB
   }
 
-  let state = EditorState.create({schema});
-  window.view = new EditorView(document.querySelector('#editor'), {state});
+  var GOOD_LEAF_SIZE = 200;
+
+  // :: class<T> A rope sequence is a persistent sequence data structure
+  // that supports appending, prepending, and slicing without doing a
+  // full copy. It is represented as a mostly-balanced tree.
+  var RopeSequence = function RopeSequence () {};
+
+  RopeSequence.prototype.append = function append (other) {
+    if (!other.length) { return this }
+    other = RopeSequence.from(other);
+
+    return (!this.length && other) ||
+      (other.length < GOOD_LEAF_SIZE && this.leafAppend(other)) ||
+      (this.length < GOOD_LEAF_SIZE && other.leafPrepend(this)) ||
+      this.appendInner(other)
+  };
+
+  // :: (union<[T], RopeSequence<T>>) → RopeSequence<T>
+  // Prepend an array or other rope to this one, returning a new rope.
+  RopeSequence.prototype.prepend = function prepend (other) {
+    if (!other.length) { return this }
+    return RopeSequence.from(other).append(this)
+  };
+
+  RopeSequence.prototype.appendInner = function appendInner (other) {
+    return new Append(this, other)
+  };
+
+  // :: (?number, ?number) → RopeSequence<T>
+  // Create a rope repesenting a sub-sequence of this rope.
+  RopeSequence.prototype.slice = function slice (from, to) {
+      if ( from === void 0 ) from = 0;
+      if ( to === void 0 ) to = this.length;
+
+    if (from >= to) { return RopeSequence.empty }
+    return this.sliceInner(Math.max(0, from), Math.min(this.length, to))
+  };
+
+  // :: (number) → T
+  // Retrieve the element at the given position from this rope.
+  RopeSequence.prototype.get = function get (i) {
+    if (i < 0 || i >= this.length) { return undefined }
+    return this.getInner(i)
+  };
+
+  // :: ((element: T, index: number) → ?bool, ?number, ?number)
+  // Call the given function for each element between the given
+  // indices. This tends to be more efficient than looping over the
+  // indices and calling `get`, because it doesn't have to descend the
+  // tree for every element.
+  RopeSequence.prototype.forEach = function forEach (f, from, to) {
+      if ( from === void 0 ) from = 0;
+      if ( to === void 0 ) to = this.length;
+
+    if (from <= to)
+      { this.forEachInner(f, from, to, 0); }
+    else
+      { this.forEachInvertedInner(f, from, to, 0); }
+  };
+
+  // :: ((element: T, index: number) → U, ?number, ?number) → [U]
+  // Map the given functions over the elements of the rope, producing
+  // a flat array.
+  RopeSequence.prototype.map = function map (f, from, to) {
+      if ( from === void 0 ) from = 0;
+      if ( to === void 0 ) to = this.length;
+
+    var result = [];
+    this.forEach(function (elt, i) { return result.push(f(elt, i)); }, from, to);
+    return result
+  };
+
+  // :: (?union<[T], RopeSequence<T>>) → RopeSequence<T>
+  // Create a rope representing the given array, or return the rope
+  // itself if a rope was given.
+  RopeSequence.from = function from (values) {
+    if (values instanceof RopeSequence) { return values }
+    return values && values.length ? new Leaf(values) : RopeSequence.empty
+  };
+
+  var Leaf = /*@__PURE__*/(function (RopeSequence) {
+    function Leaf(values) {
+      RopeSequence.call(this);
+      this.values = values;
+    }
+
+    if ( RopeSequence ) Leaf.__proto__ = RopeSequence;
+    Leaf.prototype = Object.create( RopeSequence && RopeSequence.prototype );
+    Leaf.prototype.constructor = Leaf;
+
+    var prototypeAccessors = { length: { configurable: true },depth: { configurable: true } };
+
+    Leaf.prototype.flatten = function flatten () {
+      return this.values
+    };
+
+    Leaf.prototype.sliceInner = function sliceInner (from, to) {
+      if (from == 0 && to == this.length) { return this }
+      return new Leaf(this.values.slice(from, to))
+    };
+
+    Leaf.prototype.getInner = function getInner (i) {
+      return this.values[i]
+    };
+
+    Leaf.prototype.forEachInner = function forEachInner (f, from, to, start) {
+      for (var i = from; i < to; i++)
+        { if (f(this.values[i], start + i) === false) { return false } }
+    };
+
+    Leaf.prototype.forEachInvertedInner = function forEachInvertedInner (f, from, to, start) {
+      for (var i = from - 1; i >= to; i--)
+        { if (f(this.values[i], start + i) === false) { return false } }
+    };
+
+    Leaf.prototype.leafAppend = function leafAppend (other) {
+      if (this.length + other.length <= GOOD_LEAF_SIZE)
+        { return new Leaf(this.values.concat(other.flatten())) }
+    };
+
+    Leaf.prototype.leafPrepend = function leafPrepend (other) {
+      if (this.length + other.length <= GOOD_LEAF_SIZE)
+        { return new Leaf(other.flatten().concat(this.values)) }
+    };
+
+    prototypeAccessors.length.get = function () { return this.values.length };
+
+    prototypeAccessors.depth.get = function () { return 0 };
+
+    Object.defineProperties( Leaf.prototype, prototypeAccessors );
+
+    return Leaf;
+  }(RopeSequence));
+
+  // :: RopeSequence
+  // The empty rope sequence.
+  RopeSequence.empty = new Leaf([]);
+
+  var Append = /*@__PURE__*/(function (RopeSequence) {
+    function Append(left, right) {
+      RopeSequence.call(this);
+      this.left = left;
+      this.right = right;
+      this.length = left.length + right.length;
+      this.depth = Math.max(left.depth, right.depth) + 1;
+    }
+
+    if ( RopeSequence ) Append.__proto__ = RopeSequence;
+    Append.prototype = Object.create( RopeSequence && RopeSequence.prototype );
+    Append.prototype.constructor = Append;
+
+    Append.prototype.flatten = function flatten () {
+      return this.left.flatten().concat(this.right.flatten())
+    };
+
+    Append.prototype.getInner = function getInner (i) {
+      return i < this.left.length ? this.left.get(i) : this.right.get(i - this.left.length)
+    };
+
+    Append.prototype.forEachInner = function forEachInner (f, from, to, start) {
+      var leftLen = this.left.length;
+      if (from < leftLen &&
+          this.left.forEachInner(f, from, Math.min(to, leftLen), start) === false)
+        { return false }
+      if (to > leftLen &&
+          this.right.forEachInner(f, Math.max(from - leftLen, 0), Math.min(this.length, to) - leftLen, start + leftLen) === false)
+        { return false }
+    };
+
+    Append.prototype.forEachInvertedInner = function forEachInvertedInner (f, from, to, start) {
+      var leftLen = this.left.length;
+      if (from > leftLen &&
+          this.right.forEachInvertedInner(f, from - leftLen, Math.max(to, leftLen) - leftLen, start + leftLen) === false)
+        { return false }
+      if (to < leftLen &&
+          this.left.forEachInvertedInner(f, Math.min(from, leftLen), to, start) === false)
+        { return false }
+    };
+
+    Append.prototype.sliceInner = function sliceInner (from, to) {
+      if (from == 0 && to == this.length) { return this }
+      var leftLen = this.left.length;
+      if (to <= leftLen) { return this.left.slice(from, to) }
+      if (from >= leftLen) { return this.right.slice(from - leftLen, to - leftLen) }
+      return this.left.slice(from, leftLen).append(this.right.slice(0, to - leftLen))
+    };
+
+    Append.prototype.leafAppend = function leafAppend (other) {
+      var inner = this.right.leafAppend(other);
+      if (inner) { return new Append(this.left, inner) }
+    };
+
+    Append.prototype.leafPrepend = function leafPrepend (other) {
+      var inner = this.left.leafPrepend(other);
+      if (inner) { return new Append(inner, this.right) }
+    };
+
+    Append.prototype.appendInner = function appendInner (other) {
+      if (this.left.depth >= Math.max(this.right.depth, other.depth) + 1)
+        { return new Append(this.left, new Append(this.right, other)) }
+      return new Append(this, other)
+    };
+
+    return Append;
+  }(RopeSequence));
+
+  var ropeSequence = RopeSequence;
+
+  // ProseMirror's history isn't simply a way to roll back to a previous
+  // state, because ProseMirror supports applying changes without adding
+  // them to the history (for example during collaboration).
+  //
+  // To this end, each 'Branch' (one for the undo history and one for
+  // the redo history) keeps an array of 'Items', which can optionally
+  // hold a step (an actual undoable change), and always hold a position
+  // map (which is needed to move changes below them to apply to the
+  // current document).
+  //
+  // An item that has both a step and a selection bookmark is the start
+  // of an 'event' — a group of changes that will be undone or redone at
+  // once. (It stores only the bookmark, since that way we don't have to
+  // provide a document until the selection is actually applied, which
+  // is useful when compressing.)
+
+  // Used to schedule history compression
+  var max_empty_items = 500;
+
+  var Branch = function Branch(items, eventCount) {
+    this.items = items;
+    this.eventCount = eventCount;
+  };
+
+  // : (EditorState, bool) → ?{transform: Transform, selection: ?SelectionBookmark, remaining: Branch}
+  // Pop the latest event off the branch's history and apply it
+  // to a document transform.
+  Branch.prototype.popEvent = function popEvent (state, preserveItems) {
+      var this$1 = this;
+
+    if (this.eventCount == 0) { return null }
+
+    var end = this.items.length;
+    for (;; end--) {
+      var next = this.items.get(end - 1);
+      if (next.selection) { --end; break }
+    }
+
+    var remap, mapFrom;
+    if (preserveItems) {
+      remap = this.remapping(end, this.items.length);
+      mapFrom = remap.maps.length;
+    }
+    var transform = state.tr;
+    var selection, remaining;
+    var addAfter = [], addBefore = [];
+
+    this.items.forEach(function (item, i) {
+      if (!item.step) {
+        if (!remap) {
+          remap = this$1.remapping(end, i + 1);
+          mapFrom = remap.maps.length;
+        }
+        mapFrom--;
+        addBefore.push(item);
+        return
+      }
+
+      if (remap) {
+        addBefore.push(new Item(item.map));
+        var step = item.step.map(remap.slice(mapFrom)), map;
+
+        if (step && transform.maybeStep(step).doc) {
+          map = transform.mapping.maps[transform.mapping.maps.length - 1];
+          addAfter.push(new Item(map, null, null, addAfter.length + addBefore.length));
+        }
+        mapFrom--;
+        if (map) { remap.appendMap(map, mapFrom); }
+      } else {
+        transform.maybeStep(item.step);
+      }
+
+      if (item.selection) {
+        selection = remap ? item.selection.map(remap.slice(mapFrom)) : item.selection;
+        remaining = new Branch(this$1.items.slice(0, end).append(addBefore.reverse().concat(addAfter)), this$1.eventCount - 1);
+        return false
+      }
+    }, this.items.length, 0);
+
+    return {remaining: remaining, transform: transform, selection: selection}
+  };
+
+  // : (Transform, ?SelectionBookmark, Object) → Branch
+  // Create a new branch with the given transform added.
+  Branch.prototype.addTransform = function addTransform (transform, selection, histOptions, preserveItems) {
+    var newItems = [], eventCount = this.eventCount;
+    var oldItems = this.items, lastItem = !preserveItems && oldItems.length ? oldItems.get(oldItems.length - 1) : null;
+
+    for (var i = 0; i < transform.steps.length; i++) {
+      var step = transform.steps[i].invert(transform.docs[i]);
+      var item = new Item(transform.mapping.maps[i], step, selection), merged = (void 0);
+      if (merged = lastItem && lastItem.merge(item)) {
+        item = merged;
+        if (i) { newItems.pop(); }
+        else { oldItems = oldItems.slice(0, oldItems.length - 1); }
+      }
+      newItems.push(item);
+      if (selection) {
+        eventCount++;
+        selection = null;
+      }
+      if (!preserveItems) { lastItem = item; }
+    }
+    var overflow = eventCount - histOptions.depth;
+    if (overflow > DEPTH_OVERFLOW) {
+      oldItems = cutOffEvents(oldItems, overflow);
+      eventCount -= overflow;
+    }
+    return new Branch(oldItems.append(newItems), eventCount)
+  };
+
+  Branch.prototype.remapping = function remapping (from, to) {
+    var maps = new Mapping;
+    this.items.forEach(function (item, i) {
+      var mirrorPos = item.mirrorOffset != null && i - item.mirrorOffset >= from
+          ? maps.maps.length - item.mirrorOffset : null;
+      maps.appendMap(item.map, mirrorPos);
+    }, from, to);
+    return maps
+  };
+
+  Branch.prototype.addMaps = function addMaps (array) {
+    if (this.eventCount == 0) { return this }
+    return new Branch(this.items.append(array.map(function (map) { return new Item(map); })), this.eventCount)
+  };
+
+  // : (Transform, number)
+  // When the collab module receives remote changes, the history has
+  // to know about those, so that it can adjust the steps that were
+  // rebased on top of the remote changes, and include the position
+  // maps for the remote changes in its array of items.
+  Branch.prototype.rebased = function rebased (rebasedTransform, rebasedCount) {
+    if (!this.eventCount) { return this }
+
+    var rebasedItems = [], start = Math.max(0, this.items.length - rebasedCount);
+
+    var mapping = rebasedTransform.mapping;
+    var newUntil = rebasedTransform.steps.length;
+    var eventCount = this.eventCount;
+    this.items.forEach(function (item) { if (item.selection) { eventCount--; } }, start);
+
+    var iRebased = rebasedCount;
+    this.items.forEach(function (item) {
+      var pos = mapping.getMirror(--iRebased);
+      if (pos == null) { return }
+      newUntil = Math.min(newUntil, pos);
+      var map = mapping.maps[pos];
+      if (item.step) {
+        var step = rebasedTransform.steps[pos].invert(rebasedTransform.docs[pos]);
+        var selection = item.selection && item.selection.map(mapping.slice(iRebased + 1, pos));
+        if (selection) { eventCount++; }
+        rebasedItems.push(new Item(map, step, selection));
+      } else {
+        rebasedItems.push(new Item(map));
+      }
+    }, start);
+
+    var newMaps = [];
+    for (var i = rebasedCount; i < newUntil; i++)
+      { newMaps.push(new Item(mapping.maps[i])); }
+    var items = this.items.slice(0, start).append(newMaps).append(rebasedItems);
+    var branch = new Branch(items, eventCount);
+
+    if (branch.emptyItemCount() > max_empty_items)
+      { branch = branch.compress(this.items.length - rebasedItems.length); }
+    return branch
+  };
+
+  Branch.prototype.emptyItemCount = function emptyItemCount () {
+    var count = 0;
+    this.items.forEach(function (item) { if (!item.step) { count++; } });
+    return count
+  };
+
+  // Compressing a branch means rewriting it to push the air (map-only
+  // items) out. During collaboration, these naturally accumulate
+  // because each remote change adds one. The `upto` argument is used
+  // to ensure that only the items below a given level are compressed,
+  // because `rebased` relies on a clean, untouched set of items in
+  // order to associate old items with rebased steps.
+  Branch.prototype.compress = function compress (upto) {
+      if ( upto === void 0 ) upto = this.items.length;
+
+    var remap = this.remapping(0, upto), mapFrom = remap.maps.length;
+    var items = [], events = 0;
+    this.items.forEach(function (item, i) {
+      if (i >= upto) {
+        items.push(item);
+        if (item.selection) { events++; }
+      } else if (item.step) {
+        var step = item.step.map(remap.slice(mapFrom)), map = step && step.getMap();
+        mapFrom--;
+        if (map) { remap.appendMap(map, mapFrom); }
+        if (step) {
+          var selection = item.selection && item.selection.map(remap.slice(mapFrom));
+          if (selection) { events++; }
+          var newItem = new Item(map.invert(), step, selection), merged, last = items.length - 1;
+          if (merged = items.length && items[last].merge(newItem))
+            { items[last] = merged; }
+          else
+            { items.push(newItem); }
+        }
+      } else if (item.map) {
+        mapFrom--;
+      }
+    }, this.items.length, 0);
+    return new Branch(ropeSequence.from(items.reverse()), events)
+  };
+
+  Branch.empty = new Branch(ropeSequence.empty, 0);
+
+  function cutOffEvents(items, n) {
+    var cutPoint;
+    items.forEach(function (item, i) {
+      if (item.selection && (n-- == 0)) {
+        cutPoint = i;
+        return false
+      }
+    });
+    return items.slice(cutPoint)
+  }
+
+  var Item = function Item(map, step, selection, mirrorOffset) {
+    // The (forward) step map for this item.
+    this.map = map;
+    // The inverted step
+    this.step = step;
+    // If this is non-null, this item is the start of a group, and
+    // this selection is the starting selection for the group (the one
+    // that was active before the first step was applied)
+    this.selection = selection;
+    // If this item is the inverse of a previous mapping on the stack,
+    // this points at the inverse's offset
+    this.mirrorOffset = mirrorOffset;
+  };
+
+  Item.prototype.merge = function merge (other) {
+    if (this.step && other.step && !other.selection) {
+      var step = other.step.merge(this.step);
+      if (step) { return new Item(step.getMap().invert(), step, this.selection) }
+    }
+  };
+
+  // The value of the state field that tracks undo/redo history for that
+  // state. Will be stored in the plugin state when the history plugin
+  // is active.
+  var HistoryState = function HistoryState(done, undone, prevRanges, prevTime) {
+    this.done = done;
+    this.undone = undone;
+    this.prevRanges = prevRanges;
+    this.prevTime = prevTime;
+  };
+
+  var DEPTH_OVERFLOW = 20;
+
+  // : (HistoryState, EditorState, Transaction, Object)
+  // Record a transformation in undo history.
+  function applyTransaction(history, state, tr, options) {
+    var historyTr = tr.getMeta(historyKey), rebased;
+    if (historyTr) { return historyTr.historyState }
+
+    if (tr.getMeta(closeHistoryKey)) { history = new HistoryState(history.done, history.undone, null, 0); }
+
+    var appended = tr.getMeta("appendedTransaction");
+
+    if (tr.steps.length == 0) {
+      return history
+    } else if (appended && appended.getMeta(historyKey)) {
+      if (appended.getMeta(historyKey).redo)
+        { return new HistoryState(history.done.addTransform(tr, null, options, mustPreserveItems(state)),
+                                history.undone, rangesFor(tr.mapping.maps[tr.steps.length - 1]), history.prevTime) }
+      else
+        { return new HistoryState(history.done, history.undone.addTransform(tr, null, options, mustPreserveItems(state)),
+                                null, history.prevTime) }
+    } else if (tr.getMeta("addToHistory") !== false && !(appended && appended.getMeta("addToHistory") === false)) {
+      // Group transforms that occur in quick succession into one event.
+      var newGroup = history.prevTime == 0 || !appended && (history.prevTime < (tr.time || 0) - options.newGroupDelay ||
+                                                            !isAdjacentTo(tr, history.prevRanges));
+      var prevRanges = appended ? mapRanges(history.prevRanges, tr.mapping) : rangesFor(tr.mapping.maps[tr.steps.length - 1]);
+      return new HistoryState(history.done.addTransform(tr, newGroup ? state.selection.getBookmark() : null,
+                                                        options, mustPreserveItems(state)),
+                              Branch.empty, prevRanges, tr.time)
+    } else if (rebased = tr.getMeta("rebased")) {
+      // Used by the collab module to tell the history that some of its
+      // content has been rebased.
+      return new HistoryState(history.done.rebased(tr, rebased),
+                              history.undone.rebased(tr, rebased),
+                              mapRanges(history.prevRanges, tr.mapping), history.prevTime)
+    } else {
+      return new HistoryState(history.done.addMaps(tr.mapping.maps),
+                              history.undone.addMaps(tr.mapping.maps),
+                              mapRanges(history.prevRanges, tr.mapping), history.prevTime)
+    }
+  }
+
+  function isAdjacentTo(transform, prevRanges) {
+    if (!prevRanges) { return false }
+    if (!transform.docChanged) { return true }
+    var adjacent = false;
+    transform.mapping.maps[0].forEach(function (start, end) {
+      for (var i = 0; i < prevRanges.length; i += 2)
+        { if (start <= prevRanges[i + 1] && end >= prevRanges[i])
+          { adjacent = true; } }
+    });
+    return adjacent
+  }
+
+  function rangesFor(map) {
+    var result = [];
+    map.forEach(function (_from, _to, from, to) { return result.push(from, to); });
+    return result
+  }
+
+  function mapRanges(ranges, mapping) {
+    if (!ranges) { return null }
+    var result = [];
+    for (var i = 0; i < ranges.length; i += 2) {
+      var from = mapping.map(ranges[i], 1), to = mapping.map(ranges[i + 1], -1);
+      if (from <= to) { result.push(from, to); }
+    }
+    return result
+  }
+
+  // : (HistoryState, EditorState, (tr: Transaction), bool)
+  // Apply the latest event from one branch to the document and shift the event
+  // onto the other branch.
+  function histTransaction(history, state, dispatch, redo) {
+    var preserveItems = mustPreserveItems(state), histOptions = historyKey.get(state).spec.config;
+    var pop = (redo ? history.undone : history.done).popEvent(state, preserveItems);
+    if (!pop) { return }
+
+    var selection = pop.selection.resolve(pop.transform.doc);
+    var added = (redo ? history.done : history.undone).addTransform(pop.transform, state.selection.getBookmark(),
+                                                                    histOptions, preserveItems);
+
+    var newHist = new HistoryState(redo ? added : pop.remaining, redo ? pop.remaining : added, null, 0);
+    dispatch(pop.transform.setSelection(selection).setMeta(historyKey, {redo: redo, historyState: newHist}).scrollIntoView());
+  }
+
+  var cachedPreserveItems = false, cachedPreserveItemsPlugins = null;
+  // Check whether any plugin in the given state has a
+  // `historyPreserveItems` property in its spec, in which case we must
+  // preserve steps exactly as they came in, so that they can be
+  // rebased.
+  function mustPreserveItems(state) {
+    var plugins = state.plugins;
+    if (cachedPreserveItemsPlugins != plugins) {
+      cachedPreserveItems = false;
+      cachedPreserveItemsPlugins = plugins;
+      for (var i = 0; i < plugins.length; i++) { if (plugins[i].spec.historyPreserveItems) {
+        cachedPreserveItems = true;
+        break
+      } }
+    }
+    return cachedPreserveItems
+  }
+
+  var historyKey = new PluginKey("history");
+  var closeHistoryKey = new PluginKey("closeHistory");
+
+  // :: (?Object) → Plugin
+  // Returns a plugin that enables the undo history for an editor. The
+  // plugin will track undo and redo stacks, which can be used with the
+  // [`undo`](#history.undo) and [`redo`](#history.redo) commands.
+  //
+  // You can set an `"addToHistory"` [metadata
+  // property](#state.Transaction.setMeta) of `false` on a transaction
+  // to prevent it from being rolled back by undo.
+  //
+  //   config::-
+  //   Supports the following configuration options:
+  //
+  //     depth:: ?number
+  //     The amount of history events that are collected before the
+  //     oldest events are discarded. Defaults to 100.
+  //
+  //     newGroupDelay:: ?number
+  //     The delay between changes after which a new group should be
+  //     started. Defaults to 500 (milliseconds). Note that when changes
+  //     aren't adjacent, a new group is always started.
+  function history(config) {
+    config = {depth: config && config.depth || 100,
+              newGroupDelay: config && config.newGroupDelay || 500};
+    return new Plugin({
+      key: historyKey,
+
+      state: {
+        init: function init() {
+          return new HistoryState(Branch.empty, Branch.empty, null, 0)
+        },
+        apply: function apply(tr, hist, state) {
+          return applyTransaction(hist, state, tr, config)
+        }
+      },
+
+      config: config
+    })
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // A command function that undoes the last change, if any.
+  function undo(state, dispatch) {
+    var hist = historyKey.getState(state);
+    if (!hist || hist.done.eventCount == 0) { return false }
+    if (dispatch) { histTransaction(hist, state, dispatch, false); }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // A command function that redoes the last undone change, if any.
+  function redo(state, dispatch) {
+    var hist = historyKey.getState(state);
+    if (!hist || hist.undone.eventCount == 0) { return false }
+    if (dispatch) { histTransaction(hist, state, dispatch, true); }
+    return true
+  }
+
+  var base = {
+    8: "Backspace",
+    9: "Tab",
+    10: "Enter",
+    12: "NumLock",
+    13: "Enter",
+    16: "Shift",
+    17: "Control",
+    18: "Alt",
+    20: "CapsLock",
+    27: "Escape",
+    32: " ",
+    33: "PageUp",
+    34: "PageDown",
+    35: "End",
+    36: "Home",
+    37: "ArrowLeft",
+    38: "ArrowUp",
+    39: "ArrowRight",
+    40: "ArrowDown",
+    44: "PrintScreen",
+    45: "Insert",
+    46: "Delete",
+    59: ";",
+    61: "=",
+    91: "Meta",
+    92: "Meta",
+    106: "*",
+    107: "+",
+    108: ",",
+    109: "-",
+    110: ".",
+    111: "/",
+    144: "NumLock",
+    145: "ScrollLock",
+    160: "Shift",
+    161: "Shift",
+    162: "Control",
+    163: "Control",
+    164: "Alt",
+    165: "Alt",
+    173: "-",
+    186: ";",
+    187: "=",
+    188: ",",
+    189: "-",
+    190: ".",
+    191: "/",
+    192: "`",
+    219: "[",
+    220: "\\",
+    221: "]",
+    222: "'",
+    229: "q"
+  };
+
+  var shift = {
+    48: ")",
+    49: "!",
+    50: "@",
+    51: "#",
+    52: "$",
+    53: "%",
+    54: "^",
+    55: "&",
+    56: "*",
+    57: "(",
+    59: ":",
+    61: "+",
+    173: "_",
+    186: ":",
+    187: "+",
+    188: "<",
+    189: "_",
+    190: ">",
+    191: "?",
+    192: "~",
+    219: "{",
+    220: "|",
+    221: "}",
+    222: "\"",
+    229: "Q"
+  };
+
+  var chrome$1 = typeof navigator != "undefined" && /Chrome\/(\d+)/.exec(navigator.userAgent);
+  var safari = typeof navigator != "undefined" && /Apple Computer/.test(navigator.vendor);
+  var gecko = typeof navigator != "undefined" && /Gecko\/\d+/.test(navigator.userAgent);
+  var mac = typeof navigator != "undefined" && /Mac/.test(navigator.platform);
+  var ie$1 = typeof navigator != "undefined" && /MSIE \d|Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(navigator.userAgent);
+  var brokenModifierNames = chrome$1 && (mac || +chrome$1[1] < 57) || gecko && mac;
+
+  // Fill in the digit keys
+  for (var i = 0; i < 10; i++) base[48 + i] = base[96 + i] = String(i);
+
+  // The function keys
+  for (var i = 1; i <= 24; i++) base[i + 111] = "F" + i;
+
+  // And the alphabetic keys
+  for (var i = 65; i <= 90; i++) {
+    base[i] = String.fromCharCode(i + 32);
+    shift[i] = String.fromCharCode(i);
+  }
+
+  // For each code that doesn't have a shift-equivalent, copy the base name
+  for (var code in base) if (!shift.hasOwnProperty(code)) shift[code] = base[code];
+
+  function keyName(event) {
+    // Don't trust event.key in Chrome when there are modifiers until
+    // they fix https://bugs.chromium.org/p/chromium/issues/detail?id=633838
+    var ignoreKey = brokenModifierNames && (event.ctrlKey || event.altKey || event.metaKey) ||
+      (safari || ie$1) && event.shiftKey && event.key && event.key.length == 1;
+    var name = (!ignoreKey && event.key) ||
+      (event.shiftKey ? shift : base)[event.keyCode] ||
+      event.key || "Unidentified";
+    // Edge sometimes produces wrong names (Issue #3)
+    if (name == "Esc") name = "Escape";
+    if (name == "Del") name = "Delete";
+    // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/8860571/
+    if (name == "Left") name = "ArrowLeft";
+    if (name == "Up") name = "ArrowUp";
+    if (name == "Right") name = "ArrowRight";
+    if (name == "Down") name = "ArrowDown";
+    return name
+  }
+
+  // declare global: navigator
+
+  var mac$1 = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false;
+
+  function normalizeKeyName(name) {
+    var parts = name.split(/-(?!$)/), result = parts[parts.length - 1];
+    if (result == "Space") { result = " "; }
+    var alt, ctrl, shift, meta;
+    for (var i = 0; i < parts.length - 1; i++) {
+      var mod = parts[i];
+      if (/^(cmd|meta|m)$/i.test(mod)) { meta = true; }
+      else if (/^a(lt)?$/i.test(mod)) { alt = true; }
+      else if (/^(c|ctrl|control)$/i.test(mod)) { ctrl = true; }
+      else if (/^s(hift)?$/i.test(mod)) { shift = true; }
+      else if (/^mod$/i.test(mod)) { if (mac$1) { meta = true; } else { ctrl = true; } }
+      else { throw new Error("Unrecognized modifier name: " + mod) }
+    }
+    if (alt) { result = "Alt-" + result; }
+    if (ctrl) { result = "Ctrl-" + result; }
+    if (meta) { result = "Meta-" + result; }
+    if (shift) { result = "Shift-" + result; }
+    return result
+  }
+
+  function normalize(map) {
+    var copy = Object.create(null);
+    for (var prop in map) { copy[normalizeKeyName(prop)] = map[prop]; }
+    return copy
+  }
+
+  function modifiers(name, event, shift) {
+    if (event.altKey) { name = "Alt-" + name; }
+    if (event.ctrlKey) { name = "Ctrl-" + name; }
+    if (event.metaKey) { name = "Meta-" + name; }
+    if (shift !== false && event.shiftKey) { name = "Shift-" + name; }
+    return name
+  }
+
+  // :: (Object) → Plugin
+  // Create a keymap plugin for the given set of bindings.
+  //
+  // Bindings should map key names to [command](#commands)-style
+  // functions, which will be called with `(EditorState, dispatch,
+  // EditorView)` arguments, and should return true when they've handled
+  // the key. Note that the view argument isn't part of the command
+  // protocol, but can be used as an escape hatch if a binding needs to
+  // directly interact with the UI.
+  //
+  // Key names may be strings like `"Shift-Ctrl-Enter"`—a key
+  // identifier prefixed with zero or more modifiers. Key identifiers
+  // are based on the strings that can appear in
+  // [`KeyEvent.key`](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key).
+  // Use lowercase letters to refer to letter keys (or uppercase letters
+  // if you want shift to be held). You may use `"Space"` as an alias
+  // for the `" "` name.
+  //
+  // Modifiers can be given in any order. `Shift-` (or `s-`), `Alt-` (or
+  // `a-`), `Ctrl-` (or `c-` or `Control-`) and `Cmd-` (or `m-` or
+  // `Meta-`) are recognized. For characters that are created by holding
+  // shift, the `Shift-` prefix is implied, and should not be added
+  // explicitly.
+  //
+  // You can use `Mod-` as a shorthand for `Cmd-` on Mac and `Ctrl-` on
+  // other platforms.
+  //
+  // You can add multiple keymap plugins to an editor. The order in
+  // which they appear determines their precedence (the ones early in
+  // the array get to dispatch first).
+  function keymap(bindings) {
+    return new Plugin({props: {handleKeyDown: keydownHandler(bindings)}})
+  }
+
+  // :: (Object) → (view: EditorView, event: dom.Event) → bool
+  // Given a set of bindings (using the same format as
+  // [`keymap`](#keymap.keymap), return a [keydown
+  // handler](#view.EditorProps.handleKeyDown) that handles them.
+  function keydownHandler(bindings) {
+    var map = normalize(bindings);
+    return function(view, event) {
+      var name = keyName(event), isChar = name.length == 1 && name != " ", baseName;
+      var direct = map[modifiers(name, event, !isChar)];
+      if (direct && direct(view.state, view.dispatch, view)) { return true }
+      if (isChar && (event.shiftKey || event.altKey || event.metaKey || name.charCodeAt(0) > 127) &&
+          (baseName = base[event.keyCode]) && baseName != name) {
+        // Try falling back to the keyCode when there's a modifier
+        // active or the character produced isn't ASCII, and our table
+        // produces a different name from the the keyCode. See #668,
+        // #1060
+        var fromCode = map[modifiers(baseName, event, true)];
+        if (fromCode && fromCode(view.state, view.dispatch, view)) { return true }
+      } else if (isChar && event.shiftKey) {
+        // Otherwise, if shift is active, also try the binding with the
+        // Shift- prefix enabled. See #997
+        var withShift = map[modifiers(name, event, true)];
+        if (withShift && withShift(view.state, view.dispatch, view)) { return true }
+      }
+      return false
+    }
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // Delete the selection, if there is one.
+  function deleteSelection(state, dispatch) {
+    if (state.selection.empty) { return false }
+    if (dispatch) { dispatch(state.tr.deleteSelection().scrollIntoView()); }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction), ?EditorView) → bool
+  // If the selection is empty and at the start of a textblock, try to
+  // reduce the distance between that block and the one before it—if
+  // there's a block directly before it that can be joined, join them.
+  // If not, try to move the selected block closer to the next one in
+  // the document structure by lifting it out of its parent or moving it
+  // into a parent of the previous block. Will use the view for accurate
+  // (bidi-aware) start-of-textblock detection if given.
+  function joinBackward(state, dispatch, view) {
+    var ref = state.selection;
+    var $cursor = ref.$cursor;
+    if (!$cursor || (view ? !view.endOfTextblock("backward", state)
+                          : $cursor.parentOffset > 0))
+      { return false }
+
+    var $cut = findCutBefore($cursor);
+
+    // If there is no node before this, try to lift
+    if (!$cut) {
+      var range = $cursor.blockRange(), target = range && liftTarget(range);
+      if (target == null) { return false }
+      if (dispatch) { dispatch(state.tr.lift(range, target).scrollIntoView()); }
+      return true
+    }
+
+    var before = $cut.nodeBefore;
+    // Apply the joining algorithm
+    if (!before.type.spec.isolating && deleteBarrier(state, $cut, dispatch))
+      { return true }
+
+    // If the node below has no content and the node above is
+    // selectable, delete the node below and select the one above.
+    if ($cursor.parent.content.size == 0 &&
+        (textblockAt(before, "end") || NodeSelection.isSelectable(before))) {
+      if (dispatch) {
+        var tr = state.tr.deleteRange($cursor.before(), $cursor.after());
+        tr.setSelection(textblockAt(before, "end") ? Selection.findFrom(tr.doc.resolve(tr.mapping.map($cut.pos, -1)), -1)
+                        : NodeSelection.create(tr.doc, $cut.pos - before.nodeSize));
+        dispatch(tr.scrollIntoView());
+      }
+      return true
+    }
+
+    // If the node before is an atom, delete it
+    if (before.isAtom && $cut.depth == $cursor.depth - 1) {
+      if (dispatch) { dispatch(state.tr.delete($cut.pos - before.nodeSize, $cut.pos).scrollIntoView()); }
+      return true
+    }
+
+    return false
+  }
+
+  function textblockAt(node, side) {
+    for (; node; node = (side == "start" ? node.firstChild : node.lastChild))
+      { if (node.isTextblock) { return true } }
+    return false
+  }
+
+  // :: (EditorState, ?(tr: Transaction), ?EditorView) → bool
+  // When the selection is empty and at the start of a textblock, select
+  // the node before that textblock, if possible. This is intended to be
+  // bound to keys like backspace, after
+  // [`joinBackward`](#commands.joinBackward) or other deleting
+  // commands, as a fall-back behavior when the schema doesn't allow
+  // deletion at the selected point.
+  function selectNodeBackward(state, dispatch, view) {
+    var ref = state.selection;
+    var $head = ref.$head;
+    var empty = ref.empty;
+    var $cut = $head;
+    if (!empty) { return false }
+
+    if ($head.parent.isTextblock) {
+      if (view ? !view.endOfTextblock("backward", state) : $head.parentOffset > 0) { return false }
+      $cut = findCutBefore($head);
+    }
+    var node = $cut && $cut.nodeBefore;
+    if (!node || !NodeSelection.isSelectable(node)) { return false }
+    if (dispatch)
+      { dispatch(state.tr.setSelection(NodeSelection.create(state.doc, $cut.pos - node.nodeSize)).scrollIntoView()); }
+    return true
+  }
+
+  function findCutBefore($pos) {
+    if (!$pos.parent.type.spec.isolating) { for (var i = $pos.depth - 1; i >= 0; i--) {
+      if ($pos.index(i) > 0) { return $pos.doc.resolve($pos.before(i + 1)) }
+      if ($pos.node(i).type.spec.isolating) { break }
+    } }
+    return null
+  }
+
+  // :: (EditorState, ?(tr: Transaction), ?EditorView) → bool
+  // If the selection is empty and the cursor is at the end of a
+  // textblock, try to reduce or remove the boundary between that block
+  // and the one after it, either by joining them or by moving the other
+  // block closer to this one in the tree structure. Will use the view
+  // for accurate start-of-textblock detection if given.
+  function joinForward(state, dispatch, view) {
+    var ref = state.selection;
+    var $cursor = ref.$cursor;
+    if (!$cursor || (view ? !view.endOfTextblock("forward", state)
+                          : $cursor.parentOffset < $cursor.parent.content.size))
+      { return false }
+
+    var $cut = findCutAfter($cursor);
+
+    // If there is no node after this, there's nothing to do
+    if (!$cut) { return false }
+
+    var after = $cut.nodeAfter;
+    // Try the joining algorithm
+    if (deleteBarrier(state, $cut, dispatch)) { return true }
+
+    // If the node above has no content and the node below is
+    // selectable, delete the node above and select the one below.
+    if ($cursor.parent.content.size == 0 &&
+        (textblockAt(after, "start") || NodeSelection.isSelectable(after))) {
+      if (dispatch) {
+        var tr = state.tr.deleteRange($cursor.before(), $cursor.after());
+        tr.setSelection(textblockAt(after, "start") ? Selection.findFrom(tr.doc.resolve(tr.mapping.map($cut.pos)), 1)
+                        : NodeSelection.create(tr.doc, tr.mapping.map($cut.pos)));
+        dispatch(tr.scrollIntoView());
+      }
+      return true
+    }
+
+    // If the next node is an atom, delete it
+    if (after.isAtom && $cut.depth == $cursor.depth - 1) {
+      if (dispatch) { dispatch(state.tr.delete($cut.pos, $cut.pos + after.nodeSize).scrollIntoView()); }
+      return true
+    }
+
+    return false
+  }
+
+  // :: (EditorState, ?(tr: Transaction), ?EditorView) → bool
+  // When the selection is empty and at the end of a textblock, select
+  // the node coming after that textblock, if possible. This is intended
+  // to be bound to keys like delete, after
+  // [`joinForward`](#commands.joinForward) and similar deleting
+  // commands, to provide a fall-back behavior when the schema doesn't
+  // allow deletion at the selected point.
+  function selectNodeForward(state, dispatch, view) {
+    var ref = state.selection;
+    var $head = ref.$head;
+    var empty = ref.empty;
+    var $cut = $head;
+    if (!empty) { return false }
+    if ($head.parent.isTextblock) {
+      if (view ? !view.endOfTextblock("forward", state) : $head.parentOffset < $head.parent.content.size)
+        { return false }
+      $cut = findCutAfter($head);
+    }
+    var node = $cut && $cut.nodeAfter;
+    if (!node || !NodeSelection.isSelectable(node)) { return false }
+    if (dispatch)
+      { dispatch(state.tr.setSelection(NodeSelection.create(state.doc, $cut.pos)).scrollIntoView()); }
+    return true
+  }
+
+  function findCutAfter($pos) {
+    if (!$pos.parent.type.spec.isolating) { for (var i = $pos.depth - 1; i >= 0; i--) {
+      var parent = $pos.node(i);
+      if ($pos.index(i) + 1 < parent.childCount) { return $pos.doc.resolve($pos.after(i + 1)) }
+      if (parent.type.spec.isolating) { break }
+    } }
+    return null
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // If the selection is in a node whose type has a truthy
+  // [`code`](#model.NodeSpec.code) property in its spec, replace the
+  // selection with a newline character.
+  function newlineInCode(state, dispatch) {
+    var ref = state.selection;
+    var $head = ref.$head;
+    var $anchor = ref.$anchor;
+    if (!$head.parent.type.spec.code || !$head.sameParent($anchor)) { return false }
+    if (dispatch) { dispatch(state.tr.insertText("\n").scrollIntoView()); }
+    return true
+  }
+
+  function defaultBlockAt(match) {
+    for (var i = 0; i < match.edgeCount; i++) {
+      var ref = match.edge(i);
+      var type = ref.type;
+      if (type.isTextblock && !type.hasRequiredAttrs()) { return type }
+    }
+    return null
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // When the selection is in a node with a truthy
+  // [`code`](#model.NodeSpec.code) property in its spec, create a
+  // default block after the code block, and move the cursor there.
+  function exitCode(state, dispatch) {
+    var ref = state.selection;
+    var $head = ref.$head;
+    var $anchor = ref.$anchor;
+    if (!$head.parent.type.spec.code || !$head.sameParent($anchor)) { return false }
+    var above = $head.node(-1), after = $head.indexAfter(-1), type = defaultBlockAt(above.contentMatchAt(after));
+    if (!above.canReplaceWith(after, after, type)) { return false }
+    if (dispatch) {
+      var pos = $head.after(), tr = state.tr.replaceWith(pos, pos, type.createAndFill());
+      tr.setSelection(Selection.near(tr.doc.resolve(pos), 1));
+      dispatch(tr.scrollIntoView());
+    }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // If a block node is selected, create an empty paragraph before (if
+  // it is its parent's first child) or after it.
+  function createParagraphNear(state, dispatch) {
+    var ref = state.selection;
+    var $from = ref.$from;
+    var $to = ref.$to;
+    if ($from.parent.inlineContent || $to.parent.inlineContent) { return false }
+    var type = defaultBlockAt($from.parent.contentMatchAt($to.indexAfter()));
+    if (!type || !type.isTextblock) { return false }
+    if (dispatch) {
+      var side = (!$from.parentOffset && $to.index() < $to.parent.childCount ? $from : $to).pos;
+      var tr = state.tr.insert(side, type.createAndFill());
+      tr.setSelection(TextSelection.create(tr.doc, side + 1));
+      dispatch(tr.scrollIntoView());
+    }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // If the cursor is in an empty textblock that can be lifted, lift the
+  // block.
+  function liftEmptyBlock(state, dispatch) {
+    var ref = state.selection;
+    var $cursor = ref.$cursor;
+    if (!$cursor || $cursor.parent.content.size) { return false }
+    if ($cursor.depth > 1 && $cursor.after() != $cursor.end(-1)) {
+      var before = $cursor.before();
+      if (canSplit(state.doc, before)) {
+        if (dispatch) { dispatch(state.tr.split(before).scrollIntoView()); }
+        return true
+      }
+    }
+    var range = $cursor.blockRange(), target = range && liftTarget(range);
+    if (target == null) { return false }
+    if (dispatch) { dispatch(state.tr.lift(range, target).scrollIntoView()); }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // Split the parent block of the selection. If the selection is a text
+  // selection, also delete its content.
+  function splitBlock(state, dispatch) {
+    var ref = state.selection;
+    var $from = ref.$from;
+    var $to = ref.$to;
+    if (state.selection instanceof NodeSelection && state.selection.node.isBlock) {
+      if (!$from.parentOffset || !canSplit(state.doc, $from.pos)) { return false }
+      if (dispatch) { dispatch(state.tr.split($from.pos).scrollIntoView()); }
+      return true
+    }
+
+    if (!$from.parent.isBlock) { return false }
+
+    if (dispatch) {
+      var atEnd = $to.parentOffset == $to.parent.content.size;
+      var tr = state.tr;
+      if (state.selection instanceof TextSelection) { tr.deleteSelection(); }
+      var deflt = $from.depth == 0 ? null : defaultBlockAt($from.node(-1).contentMatchAt($from.indexAfter(-1)));
+      var types = atEnd && deflt ? [{type: deflt}] : null;
+      var can = canSplit(tr.doc, tr.mapping.map($from.pos), 1, types);
+      if (!types && !can && canSplit(tr.doc, tr.mapping.map($from.pos), 1, deflt && [{type: deflt}])) {
+        types = [{type: deflt}];
+        can = true;
+      }
+      if (can) {
+        tr.split(tr.mapping.map($from.pos), 1, types);
+        if (!atEnd && !$from.parentOffset && $from.parent.type != deflt &&
+            $from.node(-1).canReplace($from.index(-1), $from.indexAfter(-1), Fragment.from([deflt.create(), $from.parent])))
+          { tr.setNodeMarkup(tr.mapping.map($from.before()), deflt); }
+      }
+      dispatch(tr.scrollIntoView());
+    }
+    return true
+  }
+
+  // :: (EditorState, ?(tr: Transaction)) → bool
+  // Select the whole document.
+  function selectAll(state, dispatch) {
+    if (dispatch) { dispatch(state.tr.setSelection(new AllSelection(state.doc))); }
+    return true
+  }
+
+  function joinMaybeClear(state, $pos, dispatch) {
+    var before = $pos.nodeBefore, after = $pos.nodeAfter, index = $pos.index();
+    if (!before || !after || !before.type.compatibleContent(after.type)) { return false }
+    if (!before.content.size && $pos.parent.canReplace(index - 1, index)) {
+      if (dispatch) { dispatch(state.tr.delete($pos.pos - before.nodeSize, $pos.pos).scrollIntoView()); }
+      return true
+    }
+    if (!$pos.parent.canReplace(index, index + 1) || !(after.isTextblock || canJoin(state.doc, $pos.pos)))
+      { return false }
+    if (dispatch)
+      { dispatch(state.tr
+               .clearIncompatible($pos.pos, before.type, before.contentMatchAt(before.childCount))
+               .join($pos.pos)
+               .scrollIntoView()); }
+    return true
+  }
+
+  function deleteBarrier(state, $cut, dispatch) {
+    var before = $cut.nodeBefore, after = $cut.nodeAfter, conn, match;
+    if (before.type.spec.isolating || after.type.spec.isolating) { return false }
+    if (joinMaybeClear(state, $cut, dispatch)) { return true }
+
+    var canDelAfter = $cut.parent.canReplace($cut.index(), $cut.index() + 1);
+    if (canDelAfter &&
+        (conn = (match = before.contentMatchAt(before.childCount)).findWrapping(after.type)) &&
+        match.matchType(conn[0] || after.type).validEnd) {
+      if (dispatch) {
+        var end = $cut.pos + after.nodeSize, wrap = Fragment.empty;
+        for (var i = conn.length - 1; i >= 0; i--)
+          { wrap = Fragment.from(conn[i].create(null, wrap)); }
+        wrap = Fragment.from(before.copy(wrap));
+        var tr = state.tr.step(new ReplaceAroundStep($cut.pos - 1, end, $cut.pos, end, new Slice(wrap, 1, 0), conn.length, true));
+        var joinAt = end + 2 * conn.length;
+        if (canJoin(tr.doc, joinAt)) { tr.join(joinAt); }
+        dispatch(tr.scrollIntoView());
+      }
+      return true
+    }
+
+    var selAfter = Selection.findFrom($cut, 1);
+    var range = selAfter && selAfter.$from.blockRange(selAfter.$to), target = range && liftTarget(range);
+    if (target != null && target >= $cut.depth) {
+      if (dispatch) { dispatch(state.tr.lift(range, target).scrollIntoView()); }
+      return true
+    }
+
+    if (canDelAfter && after.isTextblock && textblockAt(before, "end")) {
+      var at = before, wrap$1 = [];
+      for (;;) {
+        wrap$1.push(at);
+        if (at.isTextblock) { break }
+        at = at.lastChild;
+      }
+      if (at.canReplace(at.childCount, at.childCount, after.content)) {
+        if (dispatch) {
+          var end$1 = Fragment.empty;
+          for (var i$1 = wrap$1.length - 1; i$1 >= 0; i$1--) { end$1 = Fragment.from(wrap$1[i$1].copy(end$1)); }
+          var tr$1 = state.tr.step(new ReplaceAroundStep($cut.pos - wrap$1.length, $cut.pos + after.nodeSize,
+                                                       $cut.pos + 1, $cut.pos + after.nodeSize - 1,
+                                                       new Slice(end$1, wrap$1.length, 0), 0, true));
+          dispatch(tr$1.scrollIntoView());
+        }
+        return true
+      }
+    }
+
+    return false
+  }
+
+  // :: (...[(EditorState, ?(tr: Transaction), ?EditorView) → bool]) → (EditorState, ?(tr: Transaction), ?EditorView) → bool
+  // Combine a number of command functions into a single function (which
+  // calls them one by one until one returns true).
+  function chainCommands() {
+    var commands = [], len = arguments.length;
+    while ( len-- ) commands[ len ] = arguments[ len ];
+
+    return function(state, dispatch, view) {
+      for (var i = 0; i < commands.length; i++)
+        { if (commands[i](state, dispatch, view)) { return true } }
+      return false
+    }
+  }
+
+  var backspace = chainCommands(deleteSelection, joinBackward, selectNodeBackward);
+  var del = chainCommands(deleteSelection, joinForward, selectNodeForward);
+
+  // :: Object
+  // A basic keymap containing bindings not specific to any schema.
+  // Binds the following keys (when multiple commands are listed, they
+  // are chained with [`chainCommands`](#commands.chainCommands)):
+  //
+  // * **Enter** to `newlineInCode`, `createParagraphNear`, `liftEmptyBlock`, `splitBlock`
+  // * **Mod-Enter** to `exitCode`
+  // * **Backspace** and **Mod-Backspace** to `deleteSelection`, `joinBackward`, `selectNodeBackward`
+  // * **Delete** and **Mod-Delete** to `deleteSelection`, `joinForward`, `selectNodeForward`
+  // * **Mod-Delete** to `deleteSelection`, `joinForward`, `selectNodeForward`
+  // * **Mod-a** to `selectAll`
+  var pcBaseKeymap = {
+    "Enter": chainCommands(newlineInCode, createParagraphNear, liftEmptyBlock, splitBlock),
+    "Mod-Enter": exitCode,
+    "Backspace": backspace,
+    "Mod-Backspace": backspace,
+    "Delete": del,
+    "Mod-Delete": del,
+    "Mod-a": selectAll
+  };
+
+  // :: Object
+  // A copy of `pcBaseKeymap` that also binds **Ctrl-h** like Backspace,
+  // **Ctrl-d** like Delete, **Alt-Backspace** like Ctrl-Backspace, and
+  // **Ctrl-Alt-Backspace**, **Alt-Delete**, and **Alt-d** like
+  // Ctrl-Delete.
+  var macBaseKeymap = {
+    "Ctrl-h": pcBaseKeymap["Backspace"],
+    "Alt-Backspace": pcBaseKeymap["Mod-Backspace"],
+    "Ctrl-d": pcBaseKeymap["Delete"],
+    "Ctrl-Alt-Backspace": pcBaseKeymap["Mod-Delete"],
+    "Alt-Delete": pcBaseKeymap["Mod-Delete"],
+    "Alt-d": pcBaseKeymap["Mod-Delete"]
+  };
+  for (var key in pcBaseKeymap) { macBaseKeymap[key] = pcBaseKeymap[key]; }
+
+  // declare global: os, navigator
+  var mac$2 = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
+            : typeof os != "undefined" ? os.platform() == "darwin" : false;
+
+  // :: Object
+  // Depending on the detected platform, this will hold
+  // [`pcBasekeymap`](#commands.pcBaseKeymap) or
+  // [`macBaseKeymap`](#commands.macBaseKeymap).
+  var baseKeymap = mac$2 ? macBaseKeymap : pcBaseKeymap;
+
+  let state = EditorState.create({
+    schema,
+    plugins: [
+      history(),
+      keymap({'Mod-z': undo, 'Mod-y': redo}),
+      keymap(baseKeymap)
+    ]
+  });
+  window.view = new EditorView(document.querySelector('#editor'), {
+    state,
+    dispatchTransaction(transaction) {
+      console.log(transaction);
+      console.log('Document size went from', transaction.before.content.size,
+                  'to', transaction.doc.content.size);
+      let newState = view.state.apply(transaction);
+      view.updateState(newState);
+    }
+  });
+
+  // From prosemirror-commands:
+  // export let pcBaseKeymap = {
+  //   "Enter": chainCommands(newlineInCode, createParagraphNear, liftEmptyBlock, splitBlock),
+  //   "Mod-Enter": exitCode,
+  //   "Backspace": backspace,
+  //   "Mod-Backspace": backspace,
+  //   "Delete": del,
+  //   "Mod-Delete": del,
+  //   "Mod-a": selectAll
+  // }
 
 }());
