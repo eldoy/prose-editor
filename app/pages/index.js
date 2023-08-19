@@ -1,8 +1,8 @@
-module.exports = async function($) {
+module.exports = async function ($) {
   $.page.title = 'Prose Editor'
-  return /* html */`
+  return /* html */ `
     <h1>Editor</h1>
     <div id="editor"></div>
-    <script src="js/prose-editor.js"></script>
+    <script src="js/editor.js"></script>
   `
 }

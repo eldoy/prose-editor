@@ -10,7 +10,11 @@ let state = EditorState.create({
   plugins: [
     history(),
     keymap({'Mod-z': undo, 'Mod-y': redo}),
-    keymap(baseKeymap)
+    keymap(baseKeymap),
+    keymap({'Mod-s': function(state, view){
+      console.log(state)
+      console.log(view)
+    }})
   ]
 })
 window.view = new EditorView(document.querySelector('#editor'), {

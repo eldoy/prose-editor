@@ -197,7 +197,7 @@
       { this.size += content[i].nodeSize; } }
   };
 
-  var prototypeAccessors = { firstChild: { configurable: true },lastChild: { configurable: true },childCount: { configurable: true } };
+  var prototypeAccessors$5 = { firstChild: { configurable: true },lastChild: { configurable: true },childCount: { configurable: true } };
 
   // :: (number, number, (node: Node, start: number, parent: Node, index: number) → ?bool, ?number)
   // Invoke a callback for all descendant nodes between the given two
@@ -324,15 +324,15 @@
 
   // :: ?Node
   // The first child of the fragment, or `null` if it is empty.
-  prototypeAccessors.firstChild.get = function () { return this.content.length ? this.content[0] : null };
+  prototypeAccessors$5.firstChild.get = function () { return this.content.length ? this.content[0] : null };
 
   // :: ?Node
   // The last child of the fragment, or `null` if it is empty.
-  prototypeAccessors.lastChild.get = function () { return this.content.length ? this.content[this.content.length - 1] : null };
+  prototypeAccessors$5.lastChild.get = function () { return this.content.length ? this.content[this.content.length - 1] : null };
 
   // :: number
   // The number of child nodes in this fragment.
-  prototypeAccessors.childCount.get = function () { return this.content.length };
+  prototypeAccessors$5.childCount.get = function () { return this.content.length };
 
   // :: (number) → Node
   // Get the child node at the given index. Raise an error when the
@@ -454,7 +454,7 @@
                          (nodes.nodesBetween ? " (looks like multiple versions of prosemirror-model were loaded)" : ""))
   };
 
-  Object.defineProperties( Fragment.prototype, prototypeAccessors );
+  Object.defineProperties( Fragment.prototype, prototypeAccessors$5 );
 
   var found = {index: 0, offset: 0};
   function retIndex(index, offset) {
@@ -624,11 +624,11 @@
     this.openEnd = openEnd;
   };
 
-  var prototypeAccessors$1 = { size: { configurable: true } };
+  var prototypeAccessors$1$3 = { size: { configurable: true } };
 
   // :: number
   // The size this slice would add when inserted into a document.
-  prototypeAccessors$1.size.get = function () {
+  prototypeAccessors$1$3.size.get = function () {
     return this.content.size - this.openStart - this.openEnd
   };
 
@@ -683,7 +683,7 @@
     return new Slice(fragment, openStart, openEnd)
   };
 
-  Object.defineProperties( Slice.prototype, prototypeAccessors$1 );
+  Object.defineProperties( Slice.prototype, prototypeAccessors$1$3 );
 
   function removeRange(content, from, to) {
     var ref = content.findIndex(from);
@@ -749,7 +749,7 @@
       { throw new ReplaceError("Cannot join " + sub.type.name + " onto " + main.type.name) }
   }
 
-  function joinable($before, $after, depth) {
+  function joinable$1($before, $after, depth) {
     var node = $before.node(depth);
     checkJoin(node, $after.node(depth));
     return node
@@ -787,8 +787,8 @@
   }
 
   function replaceThreeWay($from, $start, $end, $to, depth) {
-    var openStart = $from.depth > depth && joinable($from, $start, depth + 1);
-    var openEnd = $to.depth > depth && joinable($end, $to, depth + 1);
+    var openStart = $from.depth > depth && joinable$1($from, $start, depth + 1);
+    var openEnd = $to.depth > depth && joinable$1($end, $to, depth + 1);
 
     var content = [];
     addRange(null, $from, depth, content);
@@ -810,7 +810,7 @@
     var content = [];
     addRange(null, $from, depth, content);
     if ($from.depth > depth) {
-      var type = joinable($from, $to, depth + 1);
+      var type = joinable$1($from, $to, depth + 1);
       addNode(close(type, replaceTwoWay($from, $to, depth + 1)), content);
     }
     addRange($to, null, depth, content);
@@ -847,7 +847,7 @@
     this.parentOffset = parentOffset;
   };
 
-  var prototypeAccessors$2 = { parent: { configurable: true },doc: { configurable: true },textOffset: { configurable: true },nodeAfter: { configurable: true },nodeBefore: { configurable: true } };
+  var prototypeAccessors$2$1 = { parent: { configurable: true },doc: { configurable: true },textOffset: { configurable: true },nodeAfter: { configurable: true },nodeBefore: { configurable: true } };
 
   ResolvedPos.prototype.resolveDepth = function resolveDepth (val) {
     if (val == null) { return this.depth }
@@ -859,11 +859,11 @@
   // The parent node that the position points into. Note that even if
   // a position points into a text node, that node is not considered
   // the parent—text nodes are ‘flat’ in this model, and have no content.
-  prototypeAccessors$2.parent.get = function () { return this.node(this.depth) };
+  prototypeAccessors$2$1.parent.get = function () { return this.node(this.depth) };
 
   // :: Node
   // The root node in which the position was resolved.
-  prototypeAccessors$2.doc.get = function () { return this.node(0) };
+  prototypeAccessors$2$1.doc.get = function () { return this.node(0) };
 
   // :: (?number) → Node
   // The ancestor node at the given level. `p.node(p.depth)` is the
@@ -923,13 +923,13 @@
   // When this position points into a text node, this returns the
   // distance between the position and the start of the text node.
   // Will be zero for positions that point between nodes.
-  prototypeAccessors$2.textOffset.get = function () { return this.pos - this.path[this.path.length - 1] };
+  prototypeAccessors$2$1.textOffset.get = function () { return this.pos - this.path[this.path.length - 1] };
 
   // :: ?Node
   // Get the node directly after the position, if any. If the position
   // points into a text node, only the part of that node after the
   // position is returned.
-  prototypeAccessors$2.nodeAfter.get = function () {
+  prototypeAccessors$2$1.nodeAfter.get = function () {
     var parent = this.parent, index = this.index(this.depth);
     if (index == parent.childCount) { return null }
     var dOff = this.pos - this.path[this.path.length - 1], child = parent.child(index);
@@ -940,7 +940,7 @@
   // Get the node directly before the position, if any. If the
   // position points into a text node, only the part of that node
   // before the position is returned.
-  prototypeAccessors$2.nodeBefore.get = function () {
+  prototypeAccessors$2$1.nodeBefore.get = function () {
     var index = this.index(this.depth);
     var dOff = this.pos - this.path[this.path.length - 1];
     if (dOff) { return this.parent.child(index).cut(0, dOff) }
@@ -1084,7 +1084,7 @@
     return result
   };
 
-  Object.defineProperties( ResolvedPos.prototype, prototypeAccessors$2 );
+  Object.defineProperties( ResolvedPos.prototype, prototypeAccessors$2$1 );
 
   var resolveCache = [], resolveCachePos = 0, resolveCacheSize = 12;
 
@@ -1104,21 +1104,21 @@
     this.depth = depth;
   };
 
-  var prototypeAccessors$1$1 = { start: { configurable: true },end: { configurable: true },parent: { configurable: true },startIndex: { configurable: true },endIndex: { configurable: true } };
+  var prototypeAccessors$1$1$1 = { start: { configurable: true },end: { configurable: true },parent: { configurable: true },startIndex: { configurable: true },endIndex: { configurable: true } };
 
   // :: number The position at the start of the range.
-  prototypeAccessors$1$1.start.get = function () { return this.$from.before(this.depth + 1) };
+  prototypeAccessors$1$1$1.start.get = function () { return this.$from.before(this.depth + 1) };
   // :: number The position at the end of the range.
-  prototypeAccessors$1$1.end.get = function () { return this.$to.after(this.depth + 1) };
+  prototypeAccessors$1$1$1.end.get = function () { return this.$to.after(this.depth + 1) };
 
   // :: Node The parent node that the range points into.
-  prototypeAccessors$1$1.parent.get = function () { return this.$from.node(this.depth) };
+  prototypeAccessors$1$1$1.parent.get = function () { return this.$from.node(this.depth) };
   // :: number The start index of the range in the parent node.
-  prototypeAccessors$1$1.startIndex.get = function () { return this.$from.index(this.depth) };
+  prototypeAccessors$1$1$1.startIndex.get = function () { return this.$from.index(this.depth) };
   // :: number The end index of the range in the parent node.
-  prototypeAccessors$1$1.endIndex.get = function () { return this.$to.indexAfter(this.depth) };
+  prototypeAccessors$1$1$1.endIndex.get = function () { return this.$to.indexAfter(this.depth) };
 
-  Object.defineProperties( NodeRange.prototype, prototypeAccessors$1$1 );
+  Object.defineProperties( NodeRange.prototype, prototypeAccessors$1$1$1 );
 
   var emptyAttrs = Object.create(null);
 
@@ -1155,7 +1155,7 @@
     this.marks = marks || Mark.none;
   };
 
-  var prototypeAccessors$3 = { nodeSize: { configurable: true },childCount: { configurable: true },textContent: { configurable: true },firstChild: { configurable: true },lastChild: { configurable: true },isBlock: { configurable: true },isTextblock: { configurable: true },inlineContent: { configurable: true },isInline: { configurable: true },isText: { configurable: true },isLeaf: { configurable: true },isAtom: { configurable: true } };
+  var prototypeAccessors$3$1 = { nodeSize: { configurable: true },childCount: { configurable: true },textContent: { configurable: true },firstChild: { configurable: true },lastChild: { configurable: true },isBlock: { configurable: true },isTextblock: { configurable: true },inlineContent: { configurable: true },isInline: { configurable: true },isText: { configurable: true },isLeaf: { configurable: true },isAtom: { configurable: true } };
 
   // text:: ?string
   // For text nodes, this contains the node's text content.
@@ -1166,11 +1166,11 @@
   // amount of characters. For other leaf nodes, it is one. For
   // non-leaf nodes, it is the size of the content plus two (the start
   // and end token).
-  prototypeAccessors$3.nodeSize.get = function () { return this.isLeaf ? 1 : 2 + this.content.size };
+  prototypeAccessors$3$1.nodeSize.get = function () { return this.isLeaf ? 1 : 2 + this.content.size };
 
   // :: number
   // The number of children that the node has.
-  prototypeAccessors$3.childCount.get = function () { return this.content.childCount };
+  prototypeAccessors$3$1.childCount.get = function () { return this.content.childCount };
 
   // :: (number) → Node
   // Get the child node at the given index. Raises an error when the
@@ -1210,7 +1210,7 @@
   // :: string
   // Concatenates all the text nodes found in this fragment and its
   // children.
-  prototypeAccessors$3.textContent.get = function () { return this.textBetween(0, this.content.size, "") };
+  prototypeAccessors$3$1.textContent.get = function () { return this.textBetween(0, this.content.size, "") };
 
   // :: (number, number, ?string, ?string) → string
   // Get all text between positions `from` and `to`. When
@@ -1224,12 +1224,12 @@
   // :: ?Node
   // Returns this node's first child, or `null` if there are no
   // children.
-  prototypeAccessors$3.firstChild.get = function () { return this.content.firstChild };
+  prototypeAccessors$3$1.firstChild.get = function () { return this.content.firstChild };
 
   // :: ?Node
   // Returns this node's last child, or `null` if there are no
   // children.
-  prototypeAccessors$3.lastChild.get = function () { return this.content.lastChild };
+  prototypeAccessors$3$1.lastChild.get = function () { return this.content.lastChild };
 
   // :: (Node) → bool
   // Test whether two nodes represent the same piece of document.
@@ -1366,29 +1366,29 @@
 
   // :: bool
   // True when this is a block (non-inline node)
-  prototypeAccessors$3.isBlock.get = function () { return this.type.isBlock };
+  prototypeAccessors$3$1.isBlock.get = function () { return this.type.isBlock };
 
   // :: bool
   // True when this is a textblock node, a block node with inline
   // content.
-  prototypeAccessors$3.isTextblock.get = function () { return this.type.isTextblock };
+  prototypeAccessors$3$1.isTextblock.get = function () { return this.type.isTextblock };
 
   // :: bool
   // True when this node allows inline content.
-  prototypeAccessors$3.inlineContent.get = function () { return this.type.inlineContent };
+  prototypeAccessors$3$1.inlineContent.get = function () { return this.type.inlineContent };
 
   // :: bool
   // True when this is an inline node (a text node or a node that can
   // appear among text).
-  prototypeAccessors$3.isInline.get = function () { return this.type.isInline };
+  prototypeAccessors$3$1.isInline.get = function () { return this.type.isInline };
 
   // :: bool
   // True when this is a text node.
-  prototypeAccessors$3.isText.get = function () { return this.type.isText };
+  prototypeAccessors$3$1.isText.get = function () { return this.type.isText };
 
   // :: bool
   // True when this is a leaf node.
-  prototypeAccessors$3.isLeaf.get = function () { return this.type.isLeaf };
+  prototypeAccessors$3$1.isLeaf.get = function () { return this.type.isLeaf };
 
   // :: bool
   // True when this is an atom, i.e. when it does not have directly
@@ -1396,7 +1396,7 @@
   // be configured with the [`atom` property](#model.NodeSpec.atom) on
   // a node's spec (typically used when the node is displayed as an
   // uneditable [node view](#view.NodeView)).
-  prototypeAccessors$3.isAtom.get = function () { return this.type.isAtom };
+  prototypeAccessors$3$1.isAtom.get = function () { return this.type.isAtom };
 
   // :: () → string
   // Return a string representation of this node for debugging
@@ -1496,7 +1496,7 @@
     return schema.nodeType(json.type).create(json.attrs, content, marks)
   };
 
-  Object.defineProperties( Node.prototype, prototypeAccessors$3 );
+  Object.defineProperties( Node.prototype, prototypeAccessors$3$1 );
 
   var TextNode = /*@__PURE__*/(function (Node) {
     function TextNode(type, attrs, content, marks) {
@@ -1574,7 +1574,7 @@
     this.wrapCache = [];
   };
 
-  var prototypeAccessors$4 = { inlineContent: { configurable: true },defaultType: { configurable: true },edgeCount: { configurable: true } };
+  var prototypeAccessors$4$1 = { inlineContent: { configurable: true },defaultType: { configurable: true },edgeCount: { configurable: true } };
 
   ContentMatch.parse = function parse (string, nodeTypes) {
     var stream = new TokenStream(string, nodeTypes);
@@ -1608,7 +1608,7 @@
     return cur
   };
 
-  prototypeAccessors$4.inlineContent.get = function () {
+  prototypeAccessors$4$1.inlineContent.get = function () {
     var first = this.next[0];
     return first ? first.isInline : false
   };
@@ -1616,7 +1616,7 @@
   // :: ?NodeType
   // Get the first matching node type at this match position that can
   // be generated.
-  prototypeAccessors$4.defaultType.get = function () {
+  prototypeAccessors$4$1.defaultType.get = function () {
     for (var i = 0; i < this.next.length; i += 2) {
       var type = this.next[i];
       if (!(type.isText || type.hasRequiredAttrs())) { return type }
@@ -1696,7 +1696,7 @@
   // :: number
   // The number of outgoing edges this node has in the finite
   // automaton that describes the content expression.
-  prototypeAccessors$4.edgeCount.get = function () {
+  prototypeAccessors$4$1.edgeCount.get = function () {
     return this.next.length >> 1
   };
 
@@ -1725,7 +1725,7 @@
     }).join("\n")
   };
 
-  Object.defineProperties( ContentMatch.prototype, prototypeAccessors$4 );
+  Object.defineProperties( ContentMatch.prototype, prototypeAccessors$4$1 );
 
   ContentMatch.empty = new ContentMatch(true);
 
@@ -1739,15 +1739,15 @@
     if (this.tokens[0] == "") { this.tokens.shift(); }
   };
 
-  var prototypeAccessors$1$2 = { next: { configurable: true } };
+  var prototypeAccessors$1$2$1 = { next: { configurable: true } };
 
-  prototypeAccessors$1$2.next.get = function () { return this.tokens[this.pos] };
+  prototypeAccessors$1$2$1.next.get = function () { return this.tokens[this.pos] };
 
   TokenStream.prototype.eat = function eat (tok) { return this.next == tok && (this.pos++ || true) };
 
   TokenStream.prototype.err = function err (str) { throw new SyntaxError(str + " (in content expression '" + this.string + "')") };
 
-  Object.defineProperties( TokenStream.prototype, prototypeAccessors$1$2 );
+  Object.defineProperties( TokenStream.prototype, prototypeAccessors$1$2$1 );
 
   function parseExpr(stream) {
     var exprs = [];
@@ -2003,7 +2003,7 @@
   // [tag](#model.Node.type) `Node` instances. They contain information
   // about the node type, such as its name and what kind of node it
   // represents.
-  var NodeType = function NodeType(name, schema, spec) {
+  var NodeType$1 = function NodeType(name, schema, spec) {
     // :: string
     // The name the node type has in this schema.
     this.name = name;
@@ -2043,38 +2043,38 @@
     this.isText = name == "text";
   };
 
-  var prototypeAccessors$5 = { isInline: { configurable: true },isTextblock: { configurable: true },isLeaf: { configurable: true },isAtom: { configurable: true } };
+  var prototypeAccessors$5$1 = { isInline: { configurable: true },isTextblock: { configurable: true },isLeaf: { configurable: true },isAtom: { configurable: true } };
 
   // :: bool
   // True if this is an inline type.
-  prototypeAccessors$5.isInline.get = function () { return !this.isBlock };
+  prototypeAccessors$5$1.isInline.get = function () { return !this.isBlock };
 
   // :: bool
   // True if this is a textblock type, a block that contains inline
   // content.
-  prototypeAccessors$5.isTextblock.get = function () { return this.isBlock && this.inlineContent };
+  prototypeAccessors$5$1.isTextblock.get = function () { return this.isBlock && this.inlineContent };
 
   // :: bool
   // True for node types that allow no content.
-  prototypeAccessors$5.isLeaf.get = function () { return this.contentMatch == ContentMatch.empty };
+  prototypeAccessors$5$1.isLeaf.get = function () { return this.contentMatch == ContentMatch.empty };
 
   // :: bool
   // True when this node is an atom, i.e. when it does not have
   // directly editable content.
-  prototypeAccessors$5.isAtom.get = function () { return this.isLeaf || this.spec.atom };
+  prototypeAccessors$5$1.isAtom.get = function () { return this.isLeaf || this.spec.atom };
 
   // :: () → bool
   // Tells you whether this node type has any required attributes.
-  NodeType.prototype.hasRequiredAttrs = function hasRequiredAttrs () {
+  NodeType$1.prototype.hasRequiredAttrs = function hasRequiredAttrs () {
     for (var n in this.attrs) { if (this.attrs[n].isRequired) { return true } }
     return false
   };
 
-  NodeType.prototype.compatibleContent = function compatibleContent (other) {
+  NodeType$1.prototype.compatibleContent = function compatibleContent (other) {
     return this == other || this.contentMatch.compatible(other.contentMatch)
   };
 
-  NodeType.prototype.computeAttrs = function computeAttrs$1 (attrs) {
+  NodeType$1.prototype.computeAttrs = function computeAttrs$1 (attrs) {
     if (!attrs && this.defaultAttrs) { return this.defaultAttrs }
     else { return computeAttrs(this.attrs, attrs) }
   };
@@ -2086,7 +2086,7 @@
   // may be a `Fragment`, a node, an array of nodes, or
   // `null`. Similarly `marks` may be `null` to default to the empty
   // set of marks.
-  NodeType.prototype.create = function create (attrs, content, marks) {
+  NodeType$1.prototype.create = function create (attrs, content, marks) {
     if (this.isText) { throw new Error("NodeType.create can't construct text nodes") }
     return new Node(this, this.computeAttrs(attrs), Fragment.from(content), Mark.setFrom(marks))
   };
@@ -2095,7 +2095,7 @@
   // Like [`create`](#model.NodeType.create), but check the given content
   // against the node type's content restrictions, and throw an error
   // if it doesn't match.
-  NodeType.prototype.createChecked = function createChecked (attrs, content, marks) {
+  NodeType$1.prototype.createChecked = function createChecked (attrs, content, marks) {
     content = Fragment.from(content);
     if (!this.validContent(content))
       { throw new RangeError("Invalid content for node " + this.name) }
@@ -2109,7 +2109,7 @@
   // Note that, due to the fact that required nodes can always be
   // created, this will always succeed if you pass null or
   // `Fragment.empty` as content.
-  NodeType.prototype.createAndFill = function createAndFill (attrs, content, marks) {
+  NodeType$1.prototype.createAndFill = function createAndFill (attrs, content, marks) {
     attrs = this.computeAttrs(attrs);
     content = Fragment.from(content);
     if (content.size) {
@@ -2125,7 +2125,7 @@
   // :: (Fragment) → bool
   // Returns true if the given fragment is valid content for this node
   // type with the given attributes.
-  NodeType.prototype.validContent = function validContent (content) {
+  NodeType$1.prototype.validContent = function validContent (content) {
     var result = this.contentMatch.matchFragment(content);
     if (!result || !result.validEnd) { return false }
     for (var i = 0; i < content.childCount; i++)
@@ -2135,13 +2135,13 @@
 
   // :: (MarkType) → bool
   // Check whether the given mark type is allowed in this node.
-  NodeType.prototype.allowsMarkType = function allowsMarkType (markType) {
+  NodeType$1.prototype.allowsMarkType = function allowsMarkType (markType) {
     return this.markSet == null || this.markSet.indexOf(markType) > -1
   };
 
   // :: ([Mark]) → bool
   // Test whether the given set of marks are allowed in this node.
-  NodeType.prototype.allowsMarks = function allowsMarks (marks) {
+  NodeType$1.prototype.allowsMarks = function allowsMarks (marks) {
     if (this.markSet == null) { return true }
     for (var i = 0; i < marks.length; i++) { if (!this.allowsMarkType(marks[i].type)) { return false } }
     return true
@@ -2149,7 +2149,7 @@
 
   // :: ([Mark]) → [Mark]
   // Removes the marks that are not allowed in this node from the given set.
-  NodeType.prototype.allowedMarks = function allowedMarks (marks) {
+  NodeType$1.prototype.allowedMarks = function allowedMarks (marks) {
     if (this.markSet == null) { return marks }
     var copy;
     for (var i = 0; i < marks.length; i++) {
@@ -2162,9 +2162,9 @@
     return !copy ? marks : copy.length ? copy : Mark.empty
   };
 
-  NodeType.compile = function compile (nodes, schema) {
+  NodeType$1.compile = function compile (nodes, schema) {
     var result = Object.create(null);
-    nodes.forEach(function (name, spec) { return result[name] = new NodeType(name, schema, spec); });
+    nodes.forEach(function (name, spec) { return result[name] = new NodeType$1(name, schema, spec); });
 
     var topType = schema.spec.topNode || "doc";
     if (!result[topType]) { throw new RangeError("Schema is missing its top node type ('" + topType + "')") }
@@ -2174,7 +2174,7 @@
     return result
   };
 
-  Object.defineProperties( NodeType.prototype, prototypeAccessors$5 );
+  Object.defineProperties( NodeType$1.prototype, prototypeAccessors$5$1 );
 
   // Attribute descriptors
 
@@ -2183,13 +2183,13 @@
     this.default = options.default;
   };
 
-  var prototypeAccessors$1$3 = { isRequired: { configurable: true } };
+  var prototypeAccessors$1$3$1 = { isRequired: { configurable: true } };
 
-  prototypeAccessors$1$3.isRequired.get = function () {
+  prototypeAccessors$1$3$1.isRequired.get = function () {
     return !this.hasDefault
   };
 
-  Object.defineProperties( Attribute.prototype, prototypeAccessors$1$3 );
+  Object.defineProperties( Attribute.prototype, prototypeAccessors$1$3$1 );
 
   // Marks
 
@@ -2436,7 +2436,7 @@
 
     // :: Object<NodeType>
     // An object mapping the schema's node names to node type objects.
-    this.nodes = NodeType.compile(this.spec.nodes, this);
+    this.nodes = NodeType$1.compile(this.spec.nodes, this);
 
     // :: Object<MarkType>
     // A map from mark names to mark type objects.
@@ -2483,7 +2483,7 @@
   Schema.prototype.node = function node (type, attrs, content, marks) {
     if (typeof type == "string")
       { type = this.nodeType(type); }
-    else if (!(type instanceof NodeType))
+    else if (!(type instanceof NodeType$1))
       { throw new RangeError("Invalid node type: " + type) }
     else if (type.schema != this)
       { throw new RangeError("Node type from different schema used (" + type.name + ")") }
@@ -2689,7 +2689,7 @@
   // a ProseMirror document conforming to a given schema. Its behavior
   // is defined by an array of [rules](#model.ParseRule).
   var DOMParser = function DOMParser(schema, rules) {
-    var this$1 = this;
+    var this$1$1 = this;
 
     // :: Schema
     // The schema into which the parser parses.
@@ -2702,8 +2702,8 @@
     this.styles = [];
 
     rules.forEach(function (rule) {
-      if (rule.tag) { this$1.tags.push(rule); }
-      else if (rule.style) { this$1.styles.push(rule); }
+      if (rule.tag) { this$1$1.tags.push(rule); }
+      else if (rule.style) { this$1$1.styles.push(rule); }
     });
 
     // Only normalize list elements when lists in the schema can't directly contain themselves
@@ -3036,7 +3036,7 @@
   // false. Otherwise, apply it, use its return value to drive the way
   // the node's content is wrapped, and return true.
   ParseContext.prototype.addElementByRule = function addElementByRule (dom, rule, continueAfter) {
-      var this$1 = this;
+      var this$1$1 = this;
 
     var sync, nodeType, markType, mark;
     if (rule.node) {
@@ -3059,7 +3059,7 @@
       this.addElement(dom, continueAfter);
     } else if (rule.getContent) {
       this.findInside(dom);
-      rule.getContent(dom, this.parser.schema).forEach(function (node) { return this$1.insertNode(node); });
+      rule.getContent(dom, this.parser.schema).forEach(function (node) { return this$1$1.insertNode(node); });
     } else {
       var contentDOM = rule.contentElement;
       if (typeof contentDOM == "string") { contentDOM = dom.querySelector(contentDOM); }
@@ -3224,7 +3224,7 @@
   // Determines whether the given [context
   // string](#ParseRule.context) matches this context.
   ParseContext.prototype.matchesContext = function matchesContext (context) {
-      var this$1 = this;
+      var this$1$1 = this;
 
     if (context.indexOf("|") > -1)
       { return context.split(/\s*\|\s*/).some(this.matchesContext, this) }
@@ -3242,7 +3242,7 @@
             { if (match(i - 1, depth)) { return true } }
           return false
         } else {
-          var next = depth > 0 || (depth == 0 && useRoot) ? this$1.nodes[depth].type
+          var next = depth > 0 || (depth == 0 && useRoot) ? this$1$1.nodes[depth].type
               : option && depth >= minDepth ? option.node(depth - minDepth).type
               : null;
           if (!next || (next.name != part && next.groups.indexOf(part) == -1))
@@ -3395,7 +3395,7 @@
   // document, should be passed so that the serializer can create
   // nodes.
   DOMSerializer.prototype.serializeFragment = function serializeFragment (fragment, options, target) {
-      var this$1 = this;
+      var this$1$1 = this;
       if ( options === void 0 ) options = {};
 
     if (!target) { target = doc(options).createDocumentFragment(); }
@@ -3407,7 +3407,7 @@
         var keep = 0, rendered = 0;
         while (keep < active.length && rendered < node.marks.length) {
           var next = node.marks[rendered];
-          if (!this$1.marks[next.type.name]) { rendered++; continue }
+          if (!this$1$1.marks[next.type.name]) { rendered++; continue }
           if (!next.eq(active[keep]) || next.type.spec.spanning === false) { break }
           keep += 2; rendered++;
         }
@@ -3417,7 +3417,7 @@
         }
         while (rendered < node.marks.length) {
           var add = node.marks[rendered++];
-          var markDOM = this$1.serializeMark(add, node.isInline, options);
+          var markDOM = this$1$1.serializeMark(add, node.isInline, options);
           if (markDOM) {
             active.push(add, top);
             top.appendChild(markDOM.dom);
@@ -3425,7 +3425,7 @@
           }
         }
       }
-      top.appendChild(this$1.serializeNode(node, options));
+      top.appendChild(this$1$1.serializeNode(node, options));
     });
 
     return target
@@ -4021,10 +4021,10 @@
     this.mapping = new Mapping;
   };
 
-  var prototypeAccessors$7 = { before: { configurable: true },docChanged: { configurable: true } };
+  var prototypeAccessors$4 = { before: { configurable: true },docChanged: { configurable: true } };
 
   // :: Node The starting document.
-  prototypeAccessors$7.before.get = function () { return this.docs.length ? this.docs[0] : this.doc };
+  prototypeAccessors$4.before.get = function () { return this.docs.length ? this.docs[0] : this.doc };
 
   // :: (step: Step) → this
   // Apply a new step in this transform, saving the result. Throws an
@@ -4047,7 +4047,7 @@
   // :: bool
   // True when the document has been changed (when there are any
   // steps).
-  prototypeAccessors$7.docChanged.get = function () {
+  prototypeAccessors$4.docChanged.get = function () {
     return this.steps.length > 0
   };
 
@@ -4058,7 +4058,7 @@
     this.doc = doc;
   };
 
-  Object.defineProperties( Transform.prototype, prototypeAccessors$7 );
+  Object.defineProperties( Transform.prototype, prototypeAccessors$4 );
 
   function mustOverride() { throw new Error("Override me") }
 
@@ -4393,18 +4393,18 @@
   // Set the type of all textblocks (partly) between `from` and `to` to
   // the given node type with the given attributes.
   Transform.prototype.setBlockType = function(from, to, type, attrs) {
-    var this$1 = this;
+    var this$1$1 = this;
     if ( to === void 0 ) to = from;
 
     if (!type.isTextblock) { throw new RangeError("Type given to setBlockType should be a textblock") }
     var mapFrom = this.steps.length;
     this.doc.nodesBetween(from, to, function (node, pos) {
-      if (node.isTextblock && !node.hasMarkup(type, attrs) && canChangeType(this$1.doc, this$1.mapping.slice(mapFrom).map(pos), type)) {
+      if (node.isTextblock && !node.hasMarkup(type, attrs) && canChangeType(this$1$1.doc, this$1$1.mapping.slice(mapFrom).map(pos), type)) {
         // Ensure all markup that isn't allowed in the new node type is cleared
-        this$1.clearIncompatible(this$1.mapping.slice(mapFrom).map(pos, 1), type);
-        var mapping = this$1.mapping.slice(mapFrom);
+        this$1$1.clearIncompatible(this$1$1.mapping.slice(mapFrom).map(pos, 1), type);
+        var mapping = this$1$1.mapping.slice(mapFrom);
         var startM = mapping.map(pos, 1), endM = mapping.map(pos + node.nodeSize, 1);
-        this$1.step(new ReplaceAroundStep(startM, endM, startM + 1, endM - 1,
+        this$1$1.step(new ReplaceAroundStep(startM, endM, startM + 1, endM - 1,
                                         new Slice(Fragment.from(type.create(attrs, null, node.marks)), 0, 0), 1, true));
         return false
       }
@@ -4483,11 +4483,11 @@
   // joined.
   function canJoin(doc, pos) {
     var $pos = doc.resolve(pos), index = $pos.index();
-    return joinable$1($pos.nodeBefore, $pos.nodeAfter) &&
+    return joinable($pos.nodeBefore, $pos.nodeAfter) &&
       $pos.parent.canReplace(index, index + 1)
   }
 
-  function joinable$1(a, b) {
+  function joinable(a, b) {
     return a && b && !a.isLeaf && a.canAppend(b)
   }
 
@@ -4572,13 +4572,13 @@
     AddMarkStep.prototype.constructor = AddMarkStep;
 
     AddMarkStep.prototype.apply = function apply (doc) {
-      var this$1 = this;
+      var this$1$1 = this;
 
       var oldSlice = doc.slice(this.from, this.to), $from = doc.resolve(this.from);
       var parent = $from.node($from.sharedDepth(this.to));
       var slice = new Slice(mapFragment(oldSlice.content, function (node, parent) {
-        if (!node.isAtom || !parent.type.allowsMarkType(this$1.mark.type)) { return node }
-        return node.mark(this$1.mark.addToSet(node.marks))
+        if (!node.isAtom || !parent.type.allowsMarkType(this$1$1.mark.type)) { return node }
+        return node.mark(this$1$1.mark.addToSet(node.marks))
       }, parent), oldSlice.openStart, oldSlice.openEnd);
       return StepResult.fromReplace(doc, this.from, this.to, slice)
     };
@@ -4631,11 +4631,11 @@
     RemoveMarkStep.prototype.constructor = RemoveMarkStep;
 
     RemoveMarkStep.prototype.apply = function apply (doc) {
-      var this$1 = this;
+      var this$1$1 = this;
 
       var oldSlice = doc.slice(this.from, this.to);
       var slice = new Slice(mapFragment(oldSlice.content, function (node) {
-        return node.mark(this$1.mark.removeFromSet(node.marks))
+        return node.mark(this$1$1.mark.removeFromSet(node.marks))
       }), oldSlice.openStart, oldSlice.openEnd);
       return StepResult.fromReplace(doc, this.from, this.to, slice)
     };
@@ -4677,7 +4677,7 @@
   // :: (number, number, Mark) → this
   // Add the given mark to the inline content between `from` and `to`.
   Transform.prototype.addMark = function(from, to, mark) {
-    var this$1 = this;
+    var this$1$1 = this;
 
     var removed = [], added = [], removing = null, adding = null;
     this.doc.nodesBetween(from, to, function (node, pos, parent) {
@@ -4703,8 +4703,8 @@
       }
     });
 
-    removed.forEach(function (s) { return this$1.step(s); });
-    added.forEach(function (s) { return this$1.step(s); });
+    removed.forEach(function (s) { return this$1$1.step(s); });
+    added.forEach(function (s) { return this$1$1.step(s); });
     return this
   };
 
@@ -4714,7 +4714,7 @@
   // remove all marks of that type. When it is null, remove all marks of
   // any type.
   Transform.prototype.removeMark = function(from, to, mark) {
-    var this$1 = this;
+    var this$1$1 = this;
     if ( mark === void 0 ) mark = null;
 
     var matched = [], step = 0;
@@ -4747,7 +4747,7 @@
         }
       }
     });
-    matched.forEach(function (m) { return this$1.step(new RemoveMarkStep(m.from, m.to, m.style)); });
+    matched.forEach(function (m) { return this$1$1.step(new RemoveMarkStep(m.from, m.to, m.style)); });
     return this
   };
 
@@ -4873,9 +4873,9 @@
       { this.placed = Fragment.from($from.node(i$1).copy(this.placed)); }
   };
 
-  var prototypeAccessors$1$4 = { depth: { configurable: true } };
+  var prototypeAccessors$1$2 = { depth: { configurable: true } };
 
-  prototypeAccessors$1$4.depth.get = function () { return this.frontier.length - 1 };
+  prototypeAccessors$1$2.depth.get = function () { return this.frontier.length - 1 };
 
   Fitter.prototype.fit = function fit () {
     // As long as there's unplaced content, try to place some of it.
@@ -5100,7 +5100,7 @@
     if (add.childCount) { this.placed = addToFragment(this.placed, this.frontier.length, add); }
   };
 
-  Object.defineProperties( Fitter.prototype, prototypeAccessors$1$4 );
+  Object.defineProperties( Fitter.prototype, prototypeAccessors$1$2 );
 
   function dropFromFragment(fragment, depth, count) {
     if (depth == 0) { return fragment.cutByIndex(count) }
@@ -5314,39 +5314,39 @@
     this.$head = $head;
   };
 
-  var prototypeAccessors$8 = { anchor: { configurable: true },head: { configurable: true },from: { configurable: true },to: { configurable: true },$from: { configurable: true },$to: { configurable: true },empty: { configurable: true } };
+  var prototypeAccessors$3 = { anchor: { configurable: true },head: { configurable: true },from: { configurable: true },to: { configurable: true },$from: { configurable: true },$to: { configurable: true },empty: { configurable: true } };
 
   // :: number
   // The selection's anchor, as an unresolved position.
-  prototypeAccessors$8.anchor.get = function () { return this.$anchor.pos };
+  prototypeAccessors$3.anchor.get = function () { return this.$anchor.pos };
 
   // :: number
   // The selection's head.
-  prototypeAccessors$8.head.get = function () { return this.$head.pos };
+  prototypeAccessors$3.head.get = function () { return this.$head.pos };
 
   // :: number
   // The lower bound of the selection's main range.
-  prototypeAccessors$8.from.get = function () { return this.$from.pos };
+  prototypeAccessors$3.from.get = function () { return this.$from.pos };
 
   // :: number
   // The upper bound of the selection's main range.
-  prototypeAccessors$8.to.get = function () { return this.$to.pos };
+  prototypeAccessors$3.to.get = function () { return this.$to.pos };
 
   // :: ResolvedPos
   // The resolved lowerbound of the selection's main range.
-  prototypeAccessors$8.$from.get = function () {
+  prototypeAccessors$3.$from.get = function () {
     return this.ranges[0].$from
   };
 
   // :: ResolvedPos
   // The resolved upper bound of the selection's main range.
-  prototypeAccessors$8.$to.get = function () {
+  prototypeAccessors$3.$to.get = function () {
     return this.ranges[0].$to
   };
 
   // :: bool
   // Indicates whether the selection contains any content.
-  prototypeAccessors$8.empty.get = function () {
+  prototypeAccessors$3.empty.get = function () {
     var ranges = this.ranges;
     for (var i = 0; i < ranges.length; i++)
       { if (ranges[i].$from.pos != ranges[i].$to.pos) { return false } }
@@ -5498,7 +5498,7 @@
     return TextSelection.between(this.$anchor, this.$head).getBookmark()
   };
 
-  Object.defineProperties( Selection.prototype, prototypeAccessors$8 );
+  Object.defineProperties( Selection.prototype, prototypeAccessors$3 );
 
   // :: bool
   // Controls whether, when a selection of this type is active in the
@@ -6045,19 +6045,19 @@
   // Object wrapping the part of a state object that stays the same
   // across transactions. Stored in the state's `config` property.
   var Configuration = function Configuration(schema, plugins) {
-    var this$1 = this;
+    var this$1$1 = this;
 
     this.schema = schema;
     this.fields = baseFields.concat();
     this.plugins = [];
     this.pluginsByKey = Object.create(null);
     if (plugins) { plugins.forEach(function (plugin) {
-      if (this$1.pluginsByKey[plugin.key])
+      if (this$1$1.pluginsByKey[plugin.key])
         { throw new RangeError("Adding different instances of a keyed plugin (" + plugin.key + ")") }
-      this$1.plugins.push(plugin);
-      this$1.pluginsByKey[plugin.key] = plugin;
+      this$1$1.plugins.push(plugin);
+      this$1$1.pluginsByKey[plugin.key] = plugin;
       if (plugin.spec.state)
-        { this$1.fields.push(new FieldDesc(plugin.key, plugin.spec.state, plugin)); }
+        { this$1$1.fields.push(new FieldDesc(plugin.key, plugin.spec.state, plugin)); }
     }); }
   };
 
@@ -6072,7 +6072,7 @@
     this.config = config;
   };
 
-  var prototypeAccessors$1$5 = { schema: { configurable: true },plugins: { configurable: true },tr: { configurable: true } };
+  var prototypeAccessors$1$1 = { schema: { configurable: true },plugins: { configurable: true },tr: { configurable: true } };
 
   // doc:: Node
   // The current document.
@@ -6086,13 +6086,13 @@
 
   // :: Schema
   // The schema of the state's document.
-  prototypeAccessors$1$5.schema.get = function () {
+  prototypeAccessors$1$1.schema.get = function () {
     return this.config.schema
   };
 
   // :: [Plugin]
   // The plugins that are active in this state.
-  prototypeAccessors$1$5.plugins.get = function () {
+  prototypeAccessors$1$1.plugins.get = function () {
     return this.config.plugins
   };
 
@@ -6167,7 +6167,7 @@
 
   // :: Transaction
   // Start a [transaction](#state.Transaction) from this state.
-  prototypeAccessors$1$5.tr.get = function () { return new Transaction(this) };
+  prototypeAccessors$1$1.tr.get = function () { return new Transaction(this) };
 
   // :: (Object) → EditorState
   // Create a new state.
@@ -6292,7 +6292,7 @@
     if (found > -1) { applyListeners.splice(found, 1); }
   };
 
-  Object.defineProperties( EditorState.prototype, prototypeAccessors$1$5 );
+  Object.defineProperties( EditorState.prototype, prototypeAccessors$1$1 );
 
   var applyListeners = [];
 
@@ -6433,15 +6433,15 @@
     var ie_11up = /Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(navigator.userAgent);
 
     result.mac = /Mac/.test(navigator.platform);
-    var ie = result.ie = !!(ie_upto10 || ie_11up || ie_edge);
+    var ie$1 = result.ie = !!(ie_upto10 || ie_11up || ie_edge);
     result.ie_version = ie_upto10 ? document.documentMode || 6 : ie_11up ? +ie_11up[1] : ie_edge ? +ie_edge[1] : null;
-    result.gecko = !ie && /gecko\/(\d+)/i.test(navigator.userAgent);
+    result.gecko = !ie$1 && /gecko\/(\d+)/i.test(navigator.userAgent);
     result.gecko_version = result.gecko && +(/Firefox\/(\d+)/.exec(navigator.userAgent) || [0, 0])[1];
-    var chrome = !ie && /Chrome\/(\d+)/.exec(navigator.userAgent);
-    result.chrome = !!chrome;
-    result.chrome_version = chrome && +chrome[1];
+    var chrome$1 = !ie$1 && /Chrome\/(\d+)/.exec(navigator.userAgent);
+    result.chrome = !!chrome$1;
+    result.chrome_version = chrome$1 && +chrome$1[1];
     // Is true for both iOS and iPadOS for convenience
-    result.safari = !ie && /Apple Computer/.test(navigator.vendor);
+    result.safari = !ie$1 && /Apple Computer/.test(navigator.vendor);
     result.ios = result.safari && (/Mobile\/\w+/.test(navigator.userAgent) || navigator.maxTouchPoints > 2);
     result.android = /Android \d/.test(navigator.userAgent);
     result.webkit = "webkitFontSmoothing" in document.documentElement.style;
@@ -7102,7 +7102,7 @@
     this.dirty = NOT_DIRTY;
   };
 
-  var prototypeAccessors$9 = { beforePosition: { configurable: true },size: { configurable: true },border: { configurable: true },posBefore: { configurable: true },posAtStart: { configurable: true },posAfter: { configurable: true },posAtEnd: { configurable: true },contentLost: { configurable: true },domAtom: { configurable: true } };
+  var prototypeAccessors = { beforePosition: { configurable: true },size: { configurable: true },border: { configurable: true },posBefore: { configurable: true },posAtStart: { configurable: true },posAfter: { configurable: true },posAtEnd: { configurable: true },contentLost: { configurable: true },domAtom: { configurable: true } };
 
   // Used to check whether a given description corresponds to a
   // widget/mark/node.
@@ -7111,7 +7111,7 @@
   ViewDesc.prototype.matchesNode = function matchesNode () { return false };
   ViewDesc.prototype.matchesHack = function matchesHack () { return false };
 
-  prototypeAccessors$9.beforePosition.get = function () { return false };
+  prototypeAccessors.beforePosition.get = function () { return false };
 
   // : () → ?ParseRule
   // When parsing in-editor content (in domchange.js), we allow
@@ -7125,7 +7125,7 @@
   ViewDesc.prototype.stopEvent = function stopEvent () { return false };
 
   // The size of the content represented by this desc.
-  prototypeAccessors$9.size.get = function () {
+  prototypeAccessors.size.get = function () {
     var size = 0;
     for (var i = 0; i < this.children.length; i++) { size += this.children[i].size; }
     return size
@@ -7133,7 +7133,7 @@
 
   // For block nodes, this represents the space taken up by their
   // start/end tokens.
-  prototypeAccessors$9.border.get = function () { return 0 };
+  prototypeAccessors.border.get = function () { return 0 };
 
   ViewDesc.prototype.destroy = function destroy () {
     this.parent = null;
@@ -7150,19 +7150,19 @@
     }
   };
 
-  prototypeAccessors$9.posBefore.get = function () {
+  prototypeAccessors.posBefore.get = function () {
     return this.parent.posBeforeChild(this)
   };
 
-  prototypeAccessors$9.posAtStart.get = function () {
+  prototypeAccessors.posAtStart.get = function () {
     return this.parent ? this.parent.posBeforeChild(this) + this.border : 0
   };
 
-  prototypeAccessors$9.posAfter.get = function () {
+  prototypeAccessors.posAfter.get = function () {
     return this.posBefore + this.size
   };
 
-  prototypeAccessors$9.posAtEnd.get = function () {
+  prototypeAccessors.posAtEnd.get = function () {
     return this.posAtStart + this.size - 2 * this.border
   };
 
@@ -7413,7 +7413,7 @@
     return !this.contentDOM && mutation.type != "selection"
   };
 
-  prototypeAccessors$9.contentLost.get = function () {
+  prototypeAccessors.contentLost.get = function () {
     return this.contentDOM && this.contentDOM != this.dom && !this.dom.contains(this.contentDOM)
   };
 
@@ -7447,9 +7447,9 @@
     }
   };
 
-  prototypeAccessors$9.domAtom.get = function () { return false };
+  prototypeAccessors.domAtom.get = function () { return false };
 
-  Object.defineProperties( ViewDesc.prototype, prototypeAccessors$9 );
+  Object.defineProperties( ViewDesc.prototype, prototypeAccessors );
 
   // Reused array to avoid allocating fresh arrays for things that will
   // stay empty anyway.
@@ -7658,7 +7658,7 @@
     };
 
     NodeViewDesc.prototype.parseRule = function parseRule () {
-      var this$1 = this;
+      var this$1$1 = this;
 
       // Experimental kludge to allow opt-in re-parsing of nodes
       if (this.node.type.spec.reparseInView) { return null }
@@ -7669,7 +7669,7 @@
       var rule = {node: this.node.type.name, attrs: this.node.attrs};
       if (this.node.type.spec.code) { rule.preserveWhitespace = "full"; }
       if (this.contentDOM && !this.contentLost) { rule.contentElement = this.contentDOM; }
-      else { rule.getContent = function () { return this$1.contentDOM ? Fragment.empty : this$1.node.content; }; }
+      else { rule.getContent = function () { return this$1$1.contentDOM ? Fragment.empty : this$1$1.node.content; }; }
       return rule
     };
 
@@ -7687,7 +7687,7 @@
     // separate step, syncs the DOM inside `this.contentDOM` to
     // `this.children`.
     NodeViewDesc.prototype.updateChildren = function updateChildren (view, pos) {
-      var this$1 = this;
+      var this$1$1 = this;
 
       var inline = this.node.inlineContent, off = pos;
       var composition = inline && view.composing && this.localCompositionNode(view, pos);
@@ -7696,7 +7696,7 @@
         if (widget.spec.marks)
           { updater.syncToMarks(widget.spec.marks, inline, view); }
         else if (widget.type.side >= 0 && !insideNode)
-          { updater.syncToMarks(i == this$1.node.childCount ? Mark.none : this$1.node.child(i).marks, inline, view); }
+          { updater.syncToMarks(i == this$1$1.node.childCount ? Mark.none : this$1$1.node.child(i).marks, inline, view); }
         // If the next node is a desc matching this widget, reuse it,
         // otherwise insert the widget as a new view desc.
         updater.placeWidget(widget, view, off);
@@ -9446,7 +9446,7 @@
   };
 
   var DOMObserver = function DOMObserver(view, handleDOMChange) {
-    var this$1 = this;
+    var this$1$1 = this;
 
     this.view = view;
     this.handleDOMChange = handleDOMChange;
@@ -9454,7 +9454,7 @@
     this.flushingSoon = -1;
     this.observer = window.MutationObserver &&
       new window.MutationObserver(function (mutations) {
-        for (var i = 0; i < mutations.length; i++) { this$1.queue.push(mutations[i]); }
+        for (var i = 0; i < mutations.length; i++) { this$1$1.queue.push(mutations[i]); }
         // IE11 will sometimes (on backspacing out a single character
         // text node after a BR node) call the observer callback
         // before actually updating the DOM, which will cause
@@ -9462,15 +9462,15 @@
         if (result.ie && result.ie_version <= 11 && mutations.some(
           function (m) { return m.type == "childList" && m.removedNodes.length ||
                m.type == "characterData" && m.oldValue.length > m.target.nodeValue.length; }))
-          { this$1.flushSoon(); }
+          { this$1$1.flushSoon(); }
         else
-          { this$1.flush(); }
+          { this$1$1.flush(); }
       });
     this.currentSelection = new SelectionState;
     if (useCharData) {
       this.onCharData = function (e) {
-        this$1.queue.push({target: e.target, type: "characterData", oldValue: e.prevValue});
-        this$1.flushSoon();
+        this$1$1.queue.push({target: e.target, type: "characterData", oldValue: e.prevValue});
+        this$1$1.flushSoon();
       };
     }
     this.onSelectionChange = this.onSelectionChange.bind(this);
@@ -9478,10 +9478,10 @@
   };
 
   DOMObserver.prototype.flushSoon = function flushSoon () {
-      var this$1 = this;
+      var this$1$1 = this;
 
     if (this.flushingSoon < 0)
-      { this.flushingSoon = window.setTimeout(function () { this$1.flushingSoon = -1; this$1.flush(); }, 20); }
+      { this.flushingSoon = window.setTimeout(function () { this$1$1.flushingSoon = -1; this$1$1.flush(); }, 20); }
   };
 
   DOMObserver.prototype.forceFlush = function forceFlush () {
@@ -9501,13 +9501,13 @@
   };
 
   DOMObserver.prototype.stop = function stop () {
-      var this$1 = this;
+      var this$1$1 = this;
 
     if (this.observer) {
       var take = this.observer.takeRecords();
       if (take.length) {
         for (var i = 0; i < take.length; i++) { this.queue.push(take[i]); }
-        window.setTimeout(function () { return this$1.flush(); }, 20);
+        window.setTimeout(function () { return this$1$1.flush(); }, 20);
       }
       this.observer.disconnect();
     }
@@ -9524,10 +9524,10 @@
   };
 
   DOMObserver.prototype.suppressSelectionUpdates = function suppressSelectionUpdates () {
-      var this$1 = this;
+      var this$1$1 = this;
 
     this.suppressingSelectionUpdates = true;
-    setTimeout(function () { return this$1.suppressingSelectionUpdates = false; }, 50);
+    setTimeout(function () { return this$1$1.suppressingSelectionUpdates = false; }, 50);
   };
 
   DOMObserver.prototype.onSelectionChange = function onSelectionChange () {
@@ -9931,7 +9931,7 @@
   };
 
   var MouseDown = function MouseDown(view, pos, event, flushed) {
-    var this$1 = this;
+    var this$1$1 = this;
 
     this.view = view;
     this.startDoc = view.state.doc;
@@ -9968,7 +9968,7 @@
       this.view.domObserver.stop();
       if (this.mightDrag.addAttr) { this.target.draggable = true; }
       if (this.mightDrag.setUneditable)
-        { setTimeout(function () { return this$1.target.setAttribute("contentEditable", "false"); }, 20); }
+        { setTimeout(function () { return this$1$1.target.setAttribute("contentEditable", "false"); }, 20); }
       this.view.domObserver.start();
     }
 
@@ -10395,12 +10395,12 @@
 
   InlineType.is = function is (span) { return span.type instanceof InlineType };
 
-  var NodeType$1 = function NodeType(attrs, spec) {
+  var NodeType = function NodeType(attrs, spec) {
     this.spec = spec || noSpec;
     this.attrs = attrs;
   };
 
-  NodeType$1.prototype.map = function map (mapping, span, offset, oldOffset) {
+  NodeType.prototype.map = function map (mapping, span, offset, oldOffset) {
     var from = mapping.mapResult(span.from + oldOffset, 1);
     if (from.deleted) { return null }
     var to = mapping.mapResult(span.to + oldOffset, -1);
@@ -10408,16 +10408,16 @@
     return new Decoration(from.pos - offset, to.pos - offset, this)
   };
 
-  NodeType$1.prototype.valid = function valid (node, span) {
+  NodeType.prototype.valid = function valid (node, span) {
     var ref = node.content.findIndex(span.from);
       var index = ref.index;
       var offset = ref.offset;
     return offset == span.from && offset + node.child(index).nodeSize == span.to
   };
 
-  NodeType$1.prototype.eq = function eq (other) {
+  NodeType.prototype.eq = function eq (other) {
     return this == other ||
-      (other instanceof NodeType$1 && compareObjs(this.attrs, other.attrs) &&
+      (other instanceof NodeType && compareObjs(this.attrs, other.attrs) &&
        compareObjs(this.spec, other.spec))
   };
 
@@ -10435,7 +10435,7 @@
     this.type = type;
   };
 
-  var prototypeAccessors$1$6 = { spec: { configurable: true },inline: { configurable: true } };
+  var prototypeAccessors$1 = { spec: { configurable: true },inline: { configurable: true } };
 
   Decoration.prototype.copy = function copy (from, to) {
     return new Decoration(from, to, this.type)
@@ -10535,17 +10535,17 @@
   // Optional information to store with the decoration. It
   // is also used when comparing decorators for equality.
   Decoration.node = function node (from, to, attrs, spec) {
-    return new Decoration(from, to, new NodeType$1(attrs, spec))
+    return new Decoration(from, to, new NodeType(attrs, spec))
   };
 
   // :: Object
   // The spec provided when creating this decoration. Can be useful
   // if you've stored extra information in that object.
-  prototypeAccessors$1$6.spec.get = function () { return this.type.spec };
+  prototypeAccessors$1.spec.get = function () { return this.type.spec };
 
-  prototypeAccessors$1$6.inline.get = function () { return this.type instanceof InlineType };
+  prototypeAccessors$1.inline.get = function () { return this.type instanceof InlineType };
 
-  Object.defineProperties( Decoration.prototype, prototypeAccessors$1$6 );
+  Object.defineProperties( Decoration.prototype, prototypeAccessors$1 );
 
   // DecorationAttrs:: interface
   // A set of attributes to add to a decorated node. Most properties
@@ -10648,14 +10648,14 @@
   };
 
   DecorationSet.prototype.addInner = function addInner (doc, decorations, offset) {
-      var this$1 = this;
+      var this$1$1 = this;
 
     var children, childIndex = 0;
     doc.forEach(function (childNode, childOffset) {
       var baseOffset = childOffset + offset, found;
       if (!(found = takeSpansForNode(decorations, childNode, baseOffset))) { return }
 
-      if (!children) { children = this$1.children.slice(); }
+      if (!children) { children = this$1$1.children.slice(); }
       while (childIndex < children.length && children[childIndex] < childOffset) { childIndex += 3; }
       if (children[childIndex] == childOffset)
         { children[childIndex + 2] = children[childIndex + 2].addInner(childNode, found, baseOffset + 1); }
@@ -11072,7 +11072,7 @@
     this.updatePluginViews();
   };
 
-  var prototypeAccessors$2$1 = { props: { configurable: true },root: { configurable: true } };
+  var prototypeAccessors$2 = { props: { configurable: true },root: { configurable: true } };
 
   // composing:: boolean
   // Holds `true` when a
@@ -11081,7 +11081,7 @@
 
   // :: DirectEditorProps
   // The view's current [props](#view.EditorProps).
-  prototypeAccessors$2$1.props.get = function () {
+  prototypeAccessors$2.props.get = function () {
     if (this._props.state != this.state) {
       var prev = this._props;
       this._props = {};
@@ -11120,7 +11120,7 @@
   };
 
   EditorView.prototype.updateStateInner = function updateStateInner (state, reconfigured) {
-      var this$1 = this;
+      var this$1$1 = this;
 
     var prev = this.state, redraw = false, updateSel = false;
     // When stored marks are added, stop composition, so that they can
@@ -11191,7 +11191,7 @@
       this.dom.scrollTop = 0;
     } else if (scroll == "to selection") {
       var startDOM = this.root.getSelection().focusNode;
-      if (this.someProp("handleScrollToSelection", function (f) { return f(this$1); }))
+      if (this.someProp("handleScrollToSelection", function (f) { return f(this$1$1); }))
         ; // Handled
       else if (state.selection instanceof NodeSelection)
         { scrollRectIntoView(this, this.docView.domAfterPos(state.selection.from).getBoundingClientRect(), startDOM); }
@@ -11259,7 +11259,7 @@
   // usually be the top-level `document`, but might be a [shadow
   // DOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Shadow_DOM)
   // root if the editor is inside one.
-  prototypeAccessors$2$1.root.get = function () {
+  prototypeAccessors$2.root.get = function () {
     var cached = this._root;
     if (cached == null) { for (var search = this.dom.parentNode; search; search = search.parentNode) {
       if (search.nodeType == 9 || (search.nodeType == 11 && search.host)) {
@@ -11388,7 +11388,7 @@
     else { this.updateState(this.state.apply(tr)); }
   };
 
-  Object.defineProperties( EditorView.prototype, prototypeAccessors$2$1 );
+  Object.defineProperties( EditorView.prototype, prototypeAccessors$2 );
 
   function computeDocDeco(view) {
     var attrs = Object.create(null);
@@ -11682,7 +11682,7 @@
   // Pop the latest event off the branch's history and apply it
   // to a document transform.
   Branch.prototype.popEvent = function popEvent (state, preserveItems) {
-      var this$1 = this;
+      var this$1$1 = this;
 
     if (this.eventCount == 0) { return null }
 
@@ -11704,7 +11704,7 @@
     this.items.forEach(function (item, i) {
       if (!item.step) {
         if (!remap) {
-          remap = this$1.remapping(end, i + 1);
+          remap = this$1$1.remapping(end, i + 1);
           mapFrom = remap.maps.length;
         }
         mapFrom--;
@@ -11728,7 +11728,7 @@
 
       if (item.selection) {
         selection = remap ? item.selection.map(remap.slice(mapFrom)) : item.selection;
-        remaining = new Branch(this$1.items.slice(0, end).append(addBefore.reverse().concat(addAfter)), this$1.eventCount - 1);
+        remaining = new Branch(this$1$1.items.slice(0, end).append(addBefore.reverse().concat(addAfter)), this$1$1.eventCount - 1);
         return false
       }
     }, this.items.length, 0);
@@ -12155,12 +12155,12 @@
     229: "Q"
   };
 
-  var chrome$1 = typeof navigator != "undefined" && /Chrome\/(\d+)/.exec(navigator.userAgent);
+  var chrome = typeof navigator != "undefined" && /Chrome\/(\d+)/.exec(navigator.userAgent);
   var safari = typeof navigator != "undefined" && /Apple Computer/.test(navigator.vendor);
   var gecko = typeof navigator != "undefined" && /Gecko\/\d+/.test(navigator.userAgent);
-  var mac = typeof navigator != "undefined" && /Mac/.test(navigator.platform);
-  var ie$1 = typeof navigator != "undefined" && /MSIE \d|Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(navigator.userAgent);
-  var brokenModifierNames = chrome$1 && (mac || +chrome$1[1] < 57) || gecko && mac;
+  var mac$2 = typeof navigator != "undefined" && /Mac/.test(navigator.platform);
+  var ie = typeof navigator != "undefined" && /MSIE \d|Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(navigator.userAgent);
+  var brokenModifierNames = chrome && (mac$2 || +chrome[1] < 57) || gecko && mac$2;
 
   // Fill in the digit keys
   for (var i = 0; i < 10; i++) base[48 + i] = base[96 + i] = String(i);
@@ -12181,7 +12181,7 @@
     // Don't trust event.key in Chrome when there are modifiers until
     // they fix https://bugs.chromium.org/p/chromium/issues/detail?id=633838
     var ignoreKey = brokenModifierNames && (event.ctrlKey || event.altKey || event.metaKey) ||
-      (safari || ie$1) && event.shiftKey && event.key && event.key.length == 1;
+      (safari || ie) && event.shiftKey && event.key && event.key.length == 1;
     var name = (!ignoreKey && event.key) ||
       (event.shiftKey ? shift : base)[event.keyCode] ||
       event.key || "Unidentified";
@@ -12720,21 +12720,25 @@
   for (var key in pcBaseKeymap) { macBaseKeymap[key] = pcBaseKeymap[key]; }
 
   // declare global: os, navigator
-  var mac$2 = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
+  var mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
             : typeof os != "undefined" ? os.platform() == "darwin" : false;
 
   // :: Object
   // Depending on the detected platform, this will hold
   // [`pcBasekeymap`](#commands.pcBaseKeymap) or
   // [`macBaseKeymap`](#commands.macBaseKeymap).
-  var baseKeymap = mac$2 ? macBaseKeymap : pcBaseKeymap;
+  var baseKeymap = mac ? macBaseKeymap : pcBaseKeymap;
 
   let state = EditorState.create({
     schema,
     plugins: [
       history(),
       keymap({'Mod-z': undo, 'Mod-y': redo}),
-      keymap(baseKeymap)
+      keymap(baseKeymap),
+      keymap({'Mod-s': function(state, view){
+        console.log(state);
+        console.log(view);
+      }})
     ]
   });
   window.view = new EditorView(document.querySelector('#editor'), {
@@ -12759,4 +12763,4 @@
   //   "Mod-a": selectAll
   // }
 
-}());
+})();

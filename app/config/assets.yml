@@ -1,8 +1,6 @@
 bundle:
   js:
-    - /js/haka-min.js
+    - /js/haka.js
     - /js/app.js
   css:
-    - /css/vcss-min.css
-    - /css/prosemirror.css
-    - /css/app.css
+    - /css/build/app.css

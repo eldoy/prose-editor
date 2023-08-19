@@ -1,9 +1,9 @@
 import resolve from '@rollup/plugin-node-resolve'
 
 export default {
-  input: 'src/main.js',
+  input: 'editor.mjs',
   output: {
-    file: 'app/assets/js/prose-editor.js',
+    file: 'editor.js',
     format: 'iife'
   },
   plugins: [resolve()]
